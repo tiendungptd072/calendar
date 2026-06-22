@@ -6,12 +6,20 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // VAPID public key is safe for the browser. Private keys are intentionally not exposed.
+  envPrefix: ['VITE_', 'VAPID_PUBLIC_KEY'],
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
+      includeAssets: [
+        'favicon.svg',
+        'apple-touch-icon.png',
+        'pwa-192x192.png',
+        'pwa-512x512.png',
+        'push-sw.js',
+      ],
       manifest: {
         id: '/',
         name: 'Lịch âm Việt Nam',
@@ -44,6 +52,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        importScripts: ['push-sw.js'],
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
       },

@@ -2,6 +2,7 @@ import type { NoteOccurrence } from '@/storage'
 import type { CalendarDay } from '../calendarMath'
 import { AlmanacInfoCard } from './AlmanacInfoCard'
 import { AuspiciousHoursList } from './AuspiciousHoursList'
+import { WebPushPanel } from './WebPushPanel'
 
 interface DayDetailHomeProps {
   day: CalendarDay
@@ -57,6 +58,8 @@ export function DayDetailHome({ day, notes, onOpenMonth, onOpenSheet }: DayDetai
             </span>
           ) : null}
         </div>
+
+        <WebPushPanel />
 
         <section className="mt-5 grid grid-cols-2 gap-2.5">
           <AlmanacInfoCard label="Can chi ngày" value={info.canChi.day} sub="Theo chu kỳ ngày" />

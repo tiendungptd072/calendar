@@ -11,6 +11,11 @@ package-lock.json
 node_modules
 dist
 dist-ssr
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
 *.local
 
 # Editor directories and files

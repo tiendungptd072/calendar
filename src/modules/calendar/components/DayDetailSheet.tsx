@@ -315,25 +315,35 @@ export function DayDetailSheet({
                           />
                         </label>
                         {reminderEnabled ? (
-                          <div className="grid grid-cols-2 gap-2">
-                            <label className="text-[12px] font-medium text-[var(--color-text-secondary)]">
-                              Trước
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <label className="rounded-[12px] bg-[var(--color-bg-grouped)] px-3 py-2.5">
+                              <span className="block text-[12px] font-semibold text-[var(--color-text-secondary)]">
+                                Nhắc trước
+                              </span>
+                              <div className="mt-1 flex items-center gap-2">
                               <input
                                 type="number"
                                 min={0}
                                 max={30}
-                                className="mt-1 w-full rounded-[10px] bg-[var(--color-bg-grouped)] px-3 py-2 text-[15px] text-[var(--color-text)] outline-none"
+                                  inputMode="numeric"
+                                  className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold text-[var(--color-text)] outline-none"
                                 value={reminderDaysBefore}
                                 onChange={(event) =>
                                   setReminderDaysBefore(clampDaysBefore(Number(event.target.value)))
                                 }
                               />
+                                <span className="shrink-0 text-[13px] font-medium text-[var(--color-text-secondary)]">
+                                  ngày
+                                </span>
+                              </div>
                             </label>
-                            <label className="text-[12px] font-medium text-[var(--color-text-secondary)]">
-                              Giờ
+                            <label className="rounded-[12px] bg-[var(--color-bg-grouped)] px-3 py-2.5">
+                              <span className="block text-[12px] font-semibold text-[var(--color-text-secondary)]">
+                                Giờ nhắc
+                              </span>
                               <input
                                 type="time"
-                                className="mt-1 w-full rounded-[10px] bg-[var(--color-bg-grouped)] px-3 py-2 text-[15px] text-[var(--color-text)] outline-none"
+                                className="mt-1 min-h-6 w-full bg-transparent text-[16px] font-semibold text-[var(--color-text)] outline-none"
                                 value={reminderTime}
                                 onChange={(event) => setReminderTime(event.target.value)}
                               />
