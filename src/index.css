@@ -1,0 +1,91 @@
+@import 'tailwindcss';
+
+:root {
+  --color-bg: #ffffff;
+  --color-bg-grouped: #f2f2f7;
+  --color-sheet: #f2f2f7;
+  --color-card: #ffffff;
+  --color-text: #000000;
+  --color-text-secondary: rgba(60, 60, 67, 0.6);
+  --color-text-tertiary: rgba(60, 60, 67, 0.3);
+  --color-separator: rgba(60, 60, 67, 0.12);
+  --color-red: #ff3b30;
+  --color-bronze: #b7791f;
+  --color-bronze-text: #8a6212;
+  --color-bronze-sub: #a2761a;
+  --color-bronze-bg: #f7efdd;
+  --color-green: #34c759;
+  --color-green-text: #1b7f3b;
+  --color-green-bg: #e4f7ea;
+  --color-info-text: #3a5378;
+  --color-info-bg: #eaeef5;
+
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  color: var(--color-text);
+  background: var(--color-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark {
+  --color-bg: #000000;
+  --color-bg-grouped: #000000;
+  --color-sheet: #1c1c1e;
+  --color-card: #2c2c2e;
+  --color-text: #ffffff;
+  --color-text-secondary: rgba(235, 235, 245, 0.6);
+  --color-text-tertiary: rgba(235, 235, 245, 0.3);
+  --color-separator: rgba(84, 84, 88, 0.45);
+  --color-red: #ff453a;
+  --color-bronze-text: #e6ae4e;
+  --color-bronze-sub: #c79a4a;
+  --color-bronze-bg: rgba(183, 121, 31, 0.2);
+  --color-green-text: #5bd37d;
+  --color-green-bg: rgba(52, 199, 89, 0.22);
+  --color-info-text: #9db4da;
+  --color-info-bg: rgba(58, 83, 120, 0.4);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100%;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+body {
+  min-height: 100svh;
+  background: var(--color-bg);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+}

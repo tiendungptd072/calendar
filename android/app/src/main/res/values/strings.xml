@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lich am Viet Nam</string>
+    <string name="title_activity_main">Lich am Viet Nam</string>
+    <string name="package_name">vn.example.lunarcalendar</string>
+    <string name="custom_url_scheme">vn.example.lunarcalendar</string>
+</resources>
