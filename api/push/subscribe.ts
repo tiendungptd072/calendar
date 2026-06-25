@@ -35,7 +35,12 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       platform: metadata.platform,
       preferences,
     })
-    const scheduled = await generateScheduleForSub(row)
+    let scheduled = 0
+    try {
+      scheduled = await generateScheduleForSub(row)
+    } catch (error) {
+      console.error('generateScheduleForSub failed:', error)
+    }
 
     sendJson(response, 200, {
       ok: true,

@@ -66,7 +66,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     const now = encodeURIComponent(new Date().toISOString())
     const due = await supabaseFetch<ScheduledPushDueRow[]>(
       `scheduled_pushes?select=id,title,body,url,subscription_id,push_subscriptions!inner(subscription,is_active)` +
-        `&fire_at=lte.${now}&sent=eq.false&push_subscriptions.is_active=eq.true&order=fire_at.asc&limit=100`,
+        `&fire_at=lte.${now}&sent=eq.false&status=eq.pending&push_subscriptions.is_active=eq.true&order=fire_at.asc&limit=100`,
       {
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -94,7 +94,12 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         await supabaseFetch<null>(`scheduled_pushes?id=eq.${row.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sent: true }),
+          body: JSON.stringify({
+            sent: true,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            error_message: null,
+          }),
         })
         sent += 1
       } catch (error) {
@@ -109,6 +114,17 @@ export default async function handler(request: ApiRequest, response: ApiResponse
             }),
           })
         }
+
+        await supabaseFetch<null>(`scheduled_pushes?id=eq.${row.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'failed',
+            error_message: `web-push ${pushError.statusCode ?? 'unknown'}: ${
+              typeof pushError.body === 'string' ? pushError.body : 'send failed'
+            }`,
+          }),
+        })
 
         console.error('push fail', pushError.statusCode, pushError.body)
       }

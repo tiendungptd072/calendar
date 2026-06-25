@@ -11,7 +11,7 @@ interface AlmanacPushDate {
 interface ScheduledPushInsert {
   subscription_id: string
   fire_at: string
-  kind: AlmanacPushKind
+  type: AlmanacPushKind
   title: string
   body: string
   url: string
@@ -21,14 +21,21 @@ const VIETNAM_TIMEZONE_OFFSET = '+07:00'
 
 const pad = (value: number): string => String(value).padStart(2, '0')
 
+const getVietnamNoonDate = (from: Date, offsetDays: number): Date => {
+  const vietnamDate = new Date(from.getTime() + 7 * 60 * 60 * 1000)
+  const noon = new Date(
+    `${vietnamDate.getUTCFullYear()}-${pad(vietnamDate.getUTCMonth() + 1)}-${pad(vietnamDate.getUTCDate())}T12:00:00${VIETNAM_TIMEZONE_OFFSET}`,
+  )
+  noon.setUTCDate(noon.getUTCDate() + offsetDays)
+
+  return noon
+}
+
 export const getUpcomingAlmanacDates = (from: Date, days: number): AlmanacPushDate[] => {
   const dates: AlmanacPushDate[] = []
 
   for (let offset = 0; offset < days; offset += 1) {
-    const date = new Date(from)
-    date.setHours(0, 0, 0, 0)
-    date.setDate(date.getDate() + offset)
-
+    const date = getVietnamNoonDate(from, offset)
     const lunar = getVietnamLunarDay(date)
 
     if (lunar.day === 1) {
@@ -53,7 +60,8 @@ export const computeFireAt = (eventDate: Date, leadDays: number, hour: number): 
 }
 
 const shouldNotifyKind = (kind: AlmanacPushKind, subscription: PushSubscriptionRow): boolean =>
-  (kind === 'mung1' && subscription.notify_mung1) || (kind === 'ram' && subscription.notify_ram)
+  (kind === 'mung1' && (subscription.notify_mung1 ?? true)) ||
+  (kind === 'ram' && (subscription.notify_ram ?? true))
 
 const createScheduledPushRows = (subscription: PushSubscriptionRow, horizonDays: number): ScheduledPushInsert[] => {
   const now = Date.now()
@@ -70,7 +78,7 @@ const createScheduledPushRows = (subscription: PushSubscriptionRow, horizonDays:
     .map(({ event, fireAt }) => ({
       subscription_id: subscription.id,
       fire_at: fireAt.toISOString(),
-      kind: event.kind,
+      type: event.kind,
       title: event.kind === 'mung1' ? 'Sắp đến mùng 1' : 'Sắp đến ngày rằm',
       body: `Còn ${leadDays} ngày`,
       url: '/',
