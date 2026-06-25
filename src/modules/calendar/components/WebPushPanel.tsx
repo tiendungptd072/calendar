@@ -3,6 +3,7 @@ import {
   getStoredWebPushSubscription,
   getWebPushAvailability,
   sendTestWebPush,
+  syncAllNoteWebPush,
   subscribeWebPush,
 } from '@/notifications/webPushClient'
 import type { StoredWebPushSubscription } from '@/notifications/webPushClient'
@@ -20,9 +21,15 @@ export function WebPushPanel() {
     setStatus('')
 
     try {
-      const nextSubscription = await subscribeWebPush()
+      const nextSubscription = await subscribeWebPush({
+        leadDays: 2,
+        notifyHour: 7,
+        notifyMung1: true,
+        notifyRam: true,
+      })
       setSubscription(nextSubscription)
-      setStatus('Đã bật thông báo. Bạn có thể gửi test notification.')
+      const syncedNotes = await syncAllNoteWebPush()
+      setStatus(`Đã bật thông báo mùng 1/rằm trước 2 ngày lúc 07:00. Đã đồng bộ ${syncedNotes} ghi chú.`)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Không bật được thông báo.')
     } finally {
@@ -66,7 +73,7 @@ export function WebPushPanel() {
         <p className="mt-3 text-[14px] leading-5 text-[var(--color-text-secondary)]">{availability.reason}</p>
       ) : (
         <p className="mt-3 text-[14px] leading-5 text-[var(--color-text-secondary)]">
-          Bật Web Push để gửi thử một thông báo từ Vercel API.
+          Bật nhắc mùng 1 và rằm trước 2 ngày lúc 07:00. Bạn cũng có thể gửi thử một thông báo ngay.
         </p>
       )}
 
@@ -77,7 +84,7 @@ export function WebPushPanel() {
           disabled={!availability.supported || isBusy}
           onClick={() => void enableNotifications()}
         >
-          {subscription ? 'Bật lại thông báo' : 'Bật thông báo'}
+          {subscription ? 'Cập nhật nhắc lịch' : 'Bật thông báo'}
         </button>
         <button
           type="button"
@@ -85,7 +92,7 @@ export function WebPushPanel() {
           disabled={!subscription || isBusy}
           onClick={() => void sendTestNotification()}
         >
-          Gửi test
+          Gửi thử ngay
         </button>
       </div>
 

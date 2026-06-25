@@ -4,6 +4,7 @@ import {
   rescheduleNotifications,
   shouldUseNotifications,
 } from '@/notifications'
+import { removeNoteWebPush, syncNoteWebPush } from '@/notifications/webPushClient'
 import {
   buildNoteOccurrenceMap,
   createNote,
@@ -52,11 +53,15 @@ export function useCalendarNotes(days: CalendarDay[]): CalendarNotesState {
   return {
     notesByDate: useMemo(() => buildNoteOccurrenceMap(days, notes), [days, notes]),
     saveNote: async (input, id) => {
+      let savedNote: CalendarNote
       if (id) {
-        await updateNote(id, input)
+        savedNote = await updateNote(id, input)
       } else {
-        await createNote(input)
+        savedNote = await createNote(input)
       }
+      await syncNoteWebPush(savedNote).catch((error: unknown) => {
+        console.warn('syncNoteWebPush failed:', error)
+      })
       await reload()
       const settings = loadNotificationSettings()
       if (shouldUseNotifications(settings)) {
@@ -65,6 +70,9 @@ export function useCalendarNotes(days: CalendarDay[]): CalendarNotesState {
     },
     removeNote: async (id) => {
       await deleteNote(id)
+      await removeNoteWebPush(id).catch((error: unknown) => {
+        console.warn('removeNoteWebPush failed:', error)
+      })
       await reload()
       const settings = loadNotificationSettings()
       if (shouldUseNotifications(settings)) {

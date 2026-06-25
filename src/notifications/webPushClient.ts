@@ -1,4 +1,10 @@
+import { convertLunar2Solar } from '@/core/lunar'
+import { listNotes } from '@/storage'
+import type { CalendarNote } from '@/storage'
+
 const WEB_PUSH_SUBSCRIPTION_KEY = 'lunar-calendar-web-push-subscription'
+const VIETNAM_TIMEZONE = 7
+const VIETNAM_TIMEZONE_OFFSET = '+07:00'
 
 export interface StoredWebPushSubscription {
   endpoint: string
@@ -18,6 +24,11 @@ interface PushSubscribeRequest {
   notify_hour: number
   notify_mung1: boolean
   notify_ram: boolean
+}
+
+interface NotePushEventRequest {
+  eventDate: string
+  fireAt: string
 }
 
 export interface WebPushReminderPreferences {
@@ -123,6 +134,8 @@ const storeWebPushSubscription = (subscription: StoredWebPushSubscription): void
   window.localStorage.setItem(WEB_PUSH_SUBSCRIPTION_KEY, JSON.stringify(subscription))
 }
 
+const pad = (value: number): string => String(value).padStart(2, '0')
+
 const getVapidPublicKey = (): string => {
   const publicKey = import.meta.env.VAPID_PUBLIC_KEY || import.meta.env.VITE_VAPID_PUBLIC_KEY
 
@@ -143,10 +156,32 @@ const getReadyServiceWorker = async (): Promise<ServiceWorkerRegistration> => {
 
 const getTimezone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
 
+const getVietnamYear = (date = new Date()): number => {
+  const shifted = new Date(date.getTime() + VIETNAM_TIMEZONE * 60 * 60 * 1000)
+
+  return shifted.getUTCFullYear()
+}
+
+const toDateKey = (date: Date): string => {
+  const shifted = new Date(date.getTime() + VIETNAM_TIMEZONE * 60 * 60 * 1000)
+
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`
+}
+
+const addDays = (dateKey: string, delta: number): string => {
+  const date = new Date(`${dateKey}T00:00:00${VIETNAM_TIMEZONE_OFFSET}`)
+  date.setUTCDate(date.getUTCDate() + delta)
+
+  return toDateKey(date)
+}
+
+const createFireDate = (eventDate: string, daysBefore: number, time: string): Date =>
+  new Date(`${addDays(eventDate, -daysBefore)}T${time}:00${VIETNAM_TIMEZONE_OFFSET}`)
+
 const normalizeReminderPreferences = (
   preferences: Partial<WebPushReminderPreferences> = {},
 ): WebPushReminderPreferences => ({
-  leadDays: preferences.leadDays ?? 1,
+  leadDays: preferences.leadDays ?? 2,
   notifyHour: preferences.notifyHour ?? 7,
   notifyMung1: preferences.notifyMung1 ?? true,
   notifyRam: preferences.notifyRam ?? true,
@@ -206,6 +241,107 @@ export const subscribeWebPush = async (
   storeWebPushSubscription(subscriptionJson)
 
   return subscriptionJson
+}
+
+const getNoteEventDates = (note: CalendarNote): string[] => {
+  if (note.repeatType === 'none') {
+    return [note.solarDate]
+  }
+
+  if (!note.lunarDate) {
+    return []
+  }
+
+  const currentYear = getVietnamYear()
+  const eventDates = new Set<string>()
+
+  for (let lunarYear = currentYear - 1; lunarYear <= currentYear + 3; lunarYear += 1) {
+    const solar = convertLunar2Solar(
+      note.lunarDate.day,
+      note.lunarDate.month,
+      lunarYear,
+      note.lunarDate.isLeapMonth ? 1 : 0,
+      VIETNAM_TIMEZONE,
+    )
+
+    if (solar.year !== 0) {
+      eventDates.add(`${solar.year}-${pad(solar.month)}-${pad(solar.day)}`)
+    }
+  }
+
+  return [...eventDates]
+}
+
+const getNotePushEvents = (note: CalendarNote): NotePushEventRequest[] => {
+  if (!note.reminder.enabled) {
+    return []
+  }
+
+  const now = Date.now()
+
+  return getNoteEventDates(note)
+    .map((eventDate) => ({
+      eventDate,
+      fireAt: createFireDate(eventDate, note.reminder.daysBefore, note.reminder.time),
+    }))
+    .filter(({ fireAt }) => fireAt.getTime() > now)
+    .map(({ eventDate, fireAt }) => ({ eventDate, fireAt: fireAt.toISOString() }))
+}
+
+export const syncNoteWebPush = async (note: CalendarNote): Promise<void> => {
+  const subscription = getStoredWebPushSubscription()
+  if (!subscription) {
+    return
+  }
+
+  const response = await fetch('/api/push/schedule-note', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      noteId: note.id,
+      title: note.title,
+      body: note.note || 'Bạn có ghi chú trong Lịch âm Việt Nam',
+      url: `/?note=${encodeURIComponent(note.id)}`,
+      events: getNotePushEvents(note),
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error('API schedule-note chưa nhận lịch nhắc ghi chú.')
+  }
+}
+
+export const removeNoteWebPush = async (noteId: string): Promise<void> => {
+  const subscription = getStoredWebPushSubscription()
+  if (!subscription) {
+    return
+  }
+
+  const response = await fetch('/api/push/schedule-note', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      noteId,
+      title: '',
+      body: '',
+      url: `/?note=${encodeURIComponent(noteId)}`,
+      events: [],
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error('API schedule-note chưa xóa lịch nhắc ghi chú.')
+  }
+}
+
+export const syncAllNoteWebPush = async (): Promise<number> => {
+  const notes = await listNotes()
+
+  await Promise.all(notes.map((note) => syncNoteWebPush(note)))
+
+  return notes.length
 }
 
 export const sendTestWebPush = async (

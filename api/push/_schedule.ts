@@ -65,7 +65,7 @@ const shouldNotifyKind = (kind: AlmanacPushKind, subscription: PushSubscriptionR
 
 const createScheduledPushRows = (subscription: PushSubscriptionRow, horizonDays: number): ScheduledPushInsert[] => {
   const now = Date.now()
-  const leadDays = subscription.lead_days ?? 1
+  const leadDays = subscription.lead_days ?? 2
   const notifyHour = subscription.notify_hour ?? 7
 
   return getUpcomingAlmanacDates(new Date(), horizonDays)
@@ -80,7 +80,7 @@ const createScheduledPushRows = (subscription: PushSubscriptionRow, horizonDays:
       fire_at: fireAt.toISOString(),
       type: event.kind,
       title: event.kind === 'mung1' ? 'Sắp đến mùng 1' : 'Sắp đến ngày rằm',
-      body: `Còn ${leadDays} ngày`,
+      body: `Còn ${leadDays} ngày nữa`,
       url: '/',
     }))
 }

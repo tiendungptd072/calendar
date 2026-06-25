@@ -189,7 +189,7 @@ const readBoolean = (value: unknown, fallback: boolean): boolean => {
 export const extractReminderPreferences = (body: unknown): PushReminderPreferences => {
   if (!body || typeof body !== 'object') {
     return {
-      leadDays: 1,
+      leadDays: 2,
       notifyHour: 7,
       notifyMung1: true,
       notifyRam: true,
@@ -207,7 +207,7 @@ export const extractReminderPreferences = (body: unknown): PushReminderPreferenc
     notifyRam?: unknown
   }
 
-  const leadDays = Math.max(0, Math.min(30, Math.trunc(readNumber(payload.lead_days ?? payload.leadDays, 1))))
+  const leadDays = Math.max(0, Math.min(30, Math.trunc(readNumber(payload.lead_days ?? payload.leadDays, 2))))
   const notifyHour = Math.max(0, Math.min(23, Math.trunc(readNumber(payload.notify_hour ?? payload.notifyHour, 7))))
 
   return {

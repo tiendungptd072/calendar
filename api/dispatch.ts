@@ -7,7 +7,8 @@ import {
   type ApiResponse,
   type WebPushSubscriptionPayload,
 } from './push/_shared.js'
-import { supabaseFetch } from './push/_schedule.js'
+import { generateScheduleForSub, supabaseFetch } from './push/_schedule.js'
+import type { PushSubscriptionRow } from './push/_supabase.js'
 
 interface ScheduledPushDueRow {
   id: string
@@ -63,6 +64,16 @@ export default async function handler(request: ApiRequest, response: ApiResponse
   }
 
   try {
+    const subscriptions = await supabaseFetch<PushSubscriptionRow[]>('push_subscriptions?select=*&is_active=eq.true', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    let refreshed = 0
+
+    for (const subscription of subscriptions ?? []) {
+      refreshed += await generateScheduleForSub(subscription)
+    }
+
     const now = encodeURIComponent(new Date().toISOString())
     const due = await supabaseFetch<ScheduledPushDueRow[]>(
       `scheduled_pushes?select=id,title,body,url,subscription_id,push_subscriptions!inner(subscription,is_active)` +
@@ -130,7 +141,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       }
     }
 
-    sendJson(response, 200, { ok: true, processed: due?.length ?? 0, sent })
+    sendJson(response, 200, { ok: true, refreshed, processed: due?.length ?? 0, sent })
   } catch (error) {
     sendJson(response, 500, { ok: false, error: getErrorMessage(error) })
   }
