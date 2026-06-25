@@ -1,4 +1,4 @@
-import { getDayInfo } from '../../src/core/lunar'
+import { getDayInfo } from '../../src/core/lunar/index'
 import { supabaseFetch, type PushSubscriptionRow } from './_supabase'
 
 type AlmanacPushKind = 'mung1' | 'ram'
