@@ -11,9 +11,20 @@ export interface StoredWebPushSubscription {
 
 interface PushSubscribeRequest {
   subscription: StoredWebPushSubscription
-  timezone: 'Asia/Ho_Chi_Minh'
+  timezone: string
   userAgent: string
   platform: string
+  lead_days: number
+  notify_hour: number
+  notify_mung1: boolean
+  notify_ram: boolean
+}
+
+export interface WebPushReminderPreferences {
+  leadDays: number
+  notifyHour: number
+  notifyMung1: boolean
+  notifyRam: boolean
 }
 
 interface NavigatorWithStandalone extends Navigator {
@@ -130,7 +141,20 @@ const getReadyServiceWorker = async (): Promise<ServiceWorkerRegistration> => {
   return navigator.serviceWorker.ready
 }
 
-export const subscribeWebPush = async (): Promise<StoredWebPushSubscription> => {
+const getTimezone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
+
+const normalizeReminderPreferences = (
+  preferences: Partial<WebPushReminderPreferences> = {},
+): WebPushReminderPreferences => ({
+  leadDays: preferences.leadDays ?? 1,
+  notifyHour: preferences.notifyHour ?? 7,
+  notifyMung1: preferences.notifyMung1 ?? true,
+  notifyRam: preferences.notifyRam ?? true,
+})
+
+export const subscribeWebPush = async (
+  preferences?: Partial<WebPushReminderPreferences>,
+): Promise<StoredWebPushSubscription> => {
   const availability = getWebPushAvailability()
 
   if (!availability.supported) {
@@ -157,11 +181,16 @@ export const subscribeWebPush = async (): Promise<StoredWebPushSubscription> => 
     throw new Error('Không đọc được push subscription từ trình duyệt.')
   }
 
+  const reminderPreferences = normalizeReminderPreferences(preferences)
   const payload: PushSubscribeRequest = {
     subscription: subscriptionJson,
-    timezone: 'Asia/Ho_Chi_Minh',
+    timezone: getTimezone(),
     userAgent: navigator.userAgent,
     platform: navigator.platform || 'unknown',
+    lead_days: reminderPreferences.leadDays,
+    notify_hour: reminderPreferences.notifyHour,
+    notify_mung1: reminderPreferences.notifyMung1,
+    notify_ram: reminderPreferences.notifyRam,
   }
 
   const response = await fetch('/api/push/subscribe', {

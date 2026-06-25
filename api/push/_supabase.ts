@@ -1,9 +1,15 @@
-import type { WebPushSubscriptionPayload } from './_shared'
+import type { PushReminderPreferences, WebPushSubscriptionPayload } from './_shared'
 
-interface PushSubscriptionRow {
+export interface PushSubscriptionRow {
   id: string
   endpoint: string
   subscription: WebPushSubscriptionPayload
+  timezone: string
+  lead_days: number
+  notify_hour: number
+  notify_mung1: boolean
+  notify_ram: boolean
+  is_active: boolean
 }
 
 interface SupabaseErrorPayload {
@@ -18,6 +24,7 @@ export interface PushSubscriptionUpsertInput {
   timezone: string
   userAgent: string
   platform: string
+  preferences: PushReminderPreferences
 }
 
 const getSupabaseConfig = (): { url: string; key: string } => {
@@ -36,17 +43,22 @@ const getSupabaseConfig = (): { url: string; key: string } => {
 
 const readSupabaseResponse = async <T>(response: Response): Promise<T> => {
   const text = await response.text()
-  const parsedBody: unknown = text ? JSON.parse(text) : null
 
   if (!response.ok) {
+    let parsedBody: unknown
+    try {
+      parsedBody = text ? JSON.parse(text) : null
+    } catch {
+      parsedBody = null
+    }
     const error = parsedBody as SupabaseErrorPayload | null
     throw new Error(error?.message || `Supabase request failed with status ${response.status}`)
   }
 
-  return parsedBody as T
+  return (text ? JSON.parse(text) : null) as T
 }
 
-const supabaseFetch = async <T>(path: string, init: RequestInit): Promise<T> => {
+export const supabaseFetch = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
   const { url, key } = getSupabaseConfig()
   const response = await fetch(`${url}/rest/v1/${path}`, {
     ...init,
@@ -65,6 +77,7 @@ export const upsertPushSubscription = async ({
   timezone,
   userAgent,
   platform,
+  preferences,
 }: PushSubscriptionUpsertInput): Promise<PushSubscriptionRow> => {
   const now = new Date().toISOString()
   const rows = await supabaseFetch<PushSubscriptionRow[]>('push_subscriptions?on_conflict=endpoint', {
@@ -79,6 +92,10 @@ export const upsertPushSubscription = async ({
       timezone,
       user_agent: userAgent,
       platform,
+      lead_days: preferences.leadDays,
+      notify_hour: preferences.notifyHour,
+      notify_mung1: preferences.notifyMung1,
+      notify_ram: preferences.notifyRam,
       is_active: true,
       last_seen_at: now,
       updated_at: now,

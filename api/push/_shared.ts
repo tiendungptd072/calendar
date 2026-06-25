@@ -30,6 +30,13 @@ export interface PushSubscriptionMetadata {
   platform: string
 }
 
+export interface PushReminderPreferences {
+  leadDays: number
+  notifyHour: number
+  notifyMung1: boolean
+  notifyRam: boolean
+}
+
 export interface PushTestTarget {
   endpoint?: string
   subscriptionId?: string
@@ -154,6 +161,60 @@ export const extractSubscriptionMetadata = (body: unknown): PushSubscriptionMeta
           ? payload.user_agent
           : 'unknown',
     platform: typeof payload.platform === 'string' ? payload.platform : 'unknown',
+  }
+}
+
+const readNumber = (value: unknown, fallback: number): number => {
+  const numberValue = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN
+
+  return Number.isFinite(numberValue) ? numberValue : fallback
+}
+
+const readBoolean = (value: unknown, fallback: boolean): boolean => {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (value === 'true') {
+    return true
+  }
+
+  if (value === 'false') {
+    return false
+  }
+
+  return fallback
+}
+
+export const extractReminderPreferences = (body: unknown): PushReminderPreferences => {
+  if (!body || typeof body !== 'object') {
+    return {
+      leadDays: 1,
+      notifyHour: 7,
+      notifyMung1: true,
+      notifyRam: true,
+    }
+  }
+
+  const payload = body as {
+    lead_days?: unknown
+    leadDays?: unknown
+    notify_hour?: unknown
+    notifyHour?: unknown
+    notify_mung1?: unknown
+    notifyMung1?: unknown
+    notify_ram?: unknown
+    notifyRam?: unknown
+  }
+
+  const leadDays = Math.max(0, Math.min(30, Math.trunc(readNumber(payload.lead_days ?? payload.leadDays, 1))))
+  const notifyHour = Math.max(0, Math.min(23, Math.trunc(readNumber(payload.notify_hour ?? payload.notifyHour, 7))))
+
+  return {
+    leadDays,
+    notifyHour,
+    notifyMung1: readBoolean(payload.notify_mung1 ?? payload.notifyMung1, true),
+    notifyRam: readBoolean(payload.notify_ram ?? payload.notifyRam, true),
   }
 }
 

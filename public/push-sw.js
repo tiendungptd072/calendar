@@ -53,3 +53,23 @@ self.addEventListener('notificationclick', (event) => {
     }),
   )
 })
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        const subscription = await self.registration.pushManager.subscribe(
+          event.oldSubscription ? event.oldSubscription.options : undefined,
+        )
+
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: subscription.toJSON() }),
+        })
+      } catch {
+        // The app will subscribe again on the next foreground open.
+      }
+    })(),
+  )
+})

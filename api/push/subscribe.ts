@@ -1,4 +1,5 @@
 import {
+  extractReminderPreferences,
   extractSubscriptionMetadata,
   extractSubscription,
   getErrorMessage,
@@ -7,6 +8,7 @@ import {
   type ApiRequest,
   type ApiResponse,
 } from './_shared'
+import { generateScheduleForSub } from './_schedule'
 import { upsertPushSubscription } from './_supabase'
 
 export default async function handler(request: ApiRequest, response: ApiResponse): Promise<void> {
@@ -25,17 +27,21 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     }
 
     const metadata = extractSubscriptionMetadata(body)
+    const preferences = extractReminderPreferences(body)
     const row = await upsertPushSubscription({
       subscription,
       timezone: metadata.timezone,
       userAgent: metadata.userAgent,
       platform: metadata.platform,
+      preferences,
     })
+    const scheduled = await generateScheduleForSub(row)
 
     sendJson(response, 200, {
       ok: true,
       subscription_id: row.id,
       endpoint: row.endpoint,
+      scheduled,
       stored: 'supabase',
     })
   } catch (error) {
