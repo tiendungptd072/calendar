@@ -5,6 +5,8 @@ import type { CalendarNote } from '@/storage'
 const WEB_PUSH_SUBSCRIPTION_KEY = 'lunar-calendar-web-push-subscription'
 const VIETNAM_TIMEZONE = 7
 const VIETNAM_TIMEZONE_OFFSET = '+07:00'
+const MAX_BROWSER_TIMER_DELAY = 2_147_483_647
+const noteReminderTimers = new Map<string, number[]>()
 
 export interface StoredWebPushSubscription {
   endpoint: string
@@ -319,12 +321,70 @@ const getNotePushEvents = (note: CalendarNote): NotePushEventRequest[] => {
     .map(({ eventDate, fireAt }) => ({ eventDate, fireAt: fireAt.toISOString() }))
 }
 
+const clearNoteReminderTimers = (noteId: string): void => {
+  const timers = noteReminderTimers.get(noteId)
+
+  if (!timers) {
+    return
+  }
+
+  for (const timer of timers) {
+    window.clearTimeout(timer)
+  }
+
+  noteReminderTimers.delete(noteId)
+}
+
+const dispatchDueNoteWebPush = async (subscription: StoredWebPushSubscription, noteId: string): Promise<void> => {
+  const response = await fetch('/api/push/dispatch-due', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      noteId,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error('API dispatch-due chưa gửi được nhắc ghi chú.')
+  }
+}
+
+const armNoteReminderTimers = (
+  subscription: StoredWebPushSubscription,
+  noteId: string,
+  events: NotePushEventRequest[],
+): void => {
+  clearNoteReminderTimers(noteId)
+
+  const timers = events.flatMap((event) => {
+    const delay = new Date(event.fireAt).getTime() - Date.now()
+
+    if (delay < 0 || delay > MAX_BROWSER_TIMER_DELAY) {
+      return []
+    }
+
+    const timer = window.setTimeout(() => {
+      void dispatchDueNoteWebPush(subscription, noteId).catch((error: unknown) => {
+        console.warn('dispatchDueNoteWebPush failed:', error)
+      })
+    }, delay)
+
+    return [timer]
+  })
+
+  if (timers.length > 0) {
+    noteReminderTimers.set(noteId, timers)
+  }
+}
+
 export const syncNoteWebPush = async (note: CalendarNote): Promise<void> => {
   const subscription = getStoredWebPushSubscription()
   if (!subscription) {
     return
   }
 
+  const events = getNotePushEvents(note)
   const response = await fetch('/api/push/schedule-note', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -334,13 +394,15 @@ export const syncNoteWebPush = async (note: CalendarNote): Promise<void> => {
       title: note.title,
       body: note.note || 'Bạn có ghi chú trong Lịch âm Việt Nam',
       url: `/?note=${encodeURIComponent(note.id)}`,
-      events: getNotePushEvents(note),
+      events,
     }),
   })
 
   if (!response.ok) {
     throw new Error('API schedule-note chưa nhận lịch nhắc ghi chú.')
   }
+
+  armNoteReminderTimers(subscription, note.id, events)
 }
 
 export const removeNoteWebPush = async (noteId: string): Promise<void> => {
@@ -349,6 +411,7 @@ export const removeNoteWebPush = async (noteId: string): Promise<void> => {
     return
   }
 
+  clearNoteReminderTimers(noteId)
   const response = await fetch('/api/push/schedule-note', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
