@@ -4,31 +4,17 @@ import {
   type ApiRequest,
   type ApiResponse,
 } from './push/_shared.js'
+import { hasDispatchSecret, isDispatchAuthorized } from './push/_dispatchAuth.js'
 import { generateScheduleForSub, supabaseFetch } from './push/_schedule.js'
 import type { PushSubscriptionRow } from './push/_supabase.js'
 
-const getAuthorization = (request: ApiRequest): string | undefined => {
-  const authorization = request.headers.authorization
-
-  return Array.isArray(authorization) ? authorization[0] : authorization
-}
-
-const isVercelCronRequest = (request: ApiRequest): boolean => {
-  const userAgent = request.headers['user-agent']
-  const cronSchedule = request.headers['x-vercel-cron-schedule']
-  const normalizedUserAgent = Array.isArray(userAgent) ? userAgent[0] : userAgent
-
-  return normalizedUserAgent === 'vercel-cron/1.0' && typeof cronSchedule === 'string'
-}
-
 export default async function handler(request: ApiRequest, response: ApiResponse): Promise<void> {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) {
-    sendJson(response, 500, { ok: false, error: 'Missing CRON_SECRET' })
+  if (request.method !== 'GET' && request.method !== 'POST') {
+    sendJson(response, 405, { ok: false, error: 'Method not allowed' })
     return
   }
 
-  if (getAuthorization(request) !== `Bearer ${cronSecret}` && !isVercelCronRequest(request)) {
+  if (!hasDispatchSecret() || !isDispatchAuthorized(request)) {
     sendJson(response, 401, { ok: false, error: 'Unauthorized' })
     return
   }
@@ -40,11 +26,20 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     })
 
     let scheduled = 0
+    let refreshed = 0
+    let failed = 0
+
     for (const subscription of subscriptions ?? []) {
-      scheduled += await generateScheduleForSub(subscription)
+      try {
+        scheduled += await generateScheduleForSub(subscription)
+        refreshed += 1
+      } catch (error) {
+        failed += 1
+        console.error('generateScheduleForSub failed:', subscription.id, error)
+      }
     }
 
-    sendJson(response, 200, { ok: true, refreshed: subscriptions?.length ?? 0, scheduled })
+    sendJson(response, 200, { ok: true, refreshed, scheduled, failed })
   } catch (error) {
     sendJson(response, 500, { ok: false, error: getErrorMessage(error) })
   }

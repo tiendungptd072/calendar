@@ -6,9 +6,9 @@ import {
   type ApiRequest,
   type ApiResponse,
 } from './push/_shared.js'
-import { hasDispatchSecret, isDispatchAuthorized, isVercelCronRequest } from './push/_dispatchAuth.js'
-import { generateScheduleForSub, supabaseFetch } from './push/_schedule.js'
-import { listPushSubscriptionsByIds, type PushSubscriptionRow } from './push/_supabase.js'
+import { hasDispatchSecret, isDispatchAuthorized } from './push/_dispatchAuth.js'
+import { supabaseFetch } from './push/_schedule.js'
+import { listPushSubscriptionsByIds } from './push/_supabase.js'
 
 interface ScheduledPushDueRow {
   id: string
@@ -39,15 +39,12 @@ const markScheduledPushFailed = async (id: string, message: string): Promise<voi
 }
 
 export default async function handler(request: ApiRequest, response: ApiResponse): Promise<void> {
-  if (!hasDispatchSecret() && !isVercelCronRequest(request)) {
-    sendJson(response, 500, {
-      ok: false,
-      error: 'Missing dispatch secret. Set CRON_SECRET or use SUPABASE_SERVICE_ROLE_KEY as the scheduler bearer token.',
-    })
+  if (request.method !== 'GET' && request.method !== 'POST') {
+    sendJson(response, 405, { ok: false, error: 'Method not allowed' })
     return
   }
 
-  if (!isDispatchAuthorized(request)) {
+  if (!hasDispatchSecret() || !isDispatchAuthorized(request)) {
     sendJson(response, 401, { ok: false, error: 'Unauthorized' })
     return
   }
@@ -62,20 +59,10 @@ export default async function handler(request: ApiRequest, response: ApiResponse
   }
 
   try {
-    const subscriptions = await supabaseFetch<PushSubscriptionRow[]>('push_subscriptions?select=*&is_active=eq.true', {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    })
-    let refreshed = 0
-
-    for (const subscription of subscriptions ?? []) {
-      refreshed += await generateScheduleForSub(subscription)
-    }
-
     const now = encodeURIComponent(new Date().toISOString())
     const due = await supabaseFetch<ScheduledPushDueRow[]>(
       `scheduled_pushes?select=id,title,body,url,subscription_id` +
-        `&fire_at=lte.${now}&sent=eq.false&status=eq.pending&order=fire_at.asc&limit=100`,
+        `&fire_at=lte.${now}&sent=eq.false&status=neq.failed&order=fire_at.asc&limit=100`,
       {
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -137,7 +124,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       }
     }
 
-    sendJson(response, 200, { ok: true, refreshed, processed: due?.length ?? 0, sent, skipped, failed })
+    sendJson(response, 200, { ok: true, processed: due?.length ?? 0, sent, skipped, failed })
   } catch (error) {
     sendJson(response, 500, { ok: false, error: getErrorMessage(error) })
   }

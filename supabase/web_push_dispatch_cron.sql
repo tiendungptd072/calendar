@@ -5,9 +5,7 @@
 -- Before running in Supabase SQL Editor:
 -- 1. Replace YOUR_VERCEL_APP_ORIGIN with the production origin, for example:
 --    https://calendar-nine-navy.vercel.app
--- 2. Replace YOUR_DISPATCH_BEARER_TOKEN with one secret accepted by /api/dispatch.
---    Recommended: CRON_SECRET or DISPATCH_SECRET on Vercel.
---    Also accepted: SUPABASE_SERVICE_ROLE_KEY/SUPABASE_SECRET_KEY already set on Vercel.
+-- 2. Replace YOUR_CRON_SECRET with the CRON_SECRET configured on Vercel.
 
 create extension if not exists pg_cron with schema extensions;
 create extension if not exists pg_net with schema extensions;
@@ -16,10 +14,10 @@ do $$
 declare
   job_name text := 'lunar-calendar-dispatch-every-minute';
   app_origin text := 'https://YOUR_VERCEL_APP_ORIGIN';
-  dispatch_bearer_token text := 'YOUR_DISPATCH_BEARER_TOKEN';
+  cron_secret text := 'YOUR_CRON_SECRET';
 begin
-  if app_origin like '%YOUR_%' or dispatch_bearer_token like '%YOUR_%' then
-    raise exception 'Replace app_origin and dispatch_bearer_token before running this SQL.';
+  if app_origin like '%YOUR_%' or cron_secret like '%YOUR_%' then
+    raise exception 'Replace app_origin and cron_secret before running this SQL.';
   end if;
 
   if exists (select 1 from cron.job where jobname = job_name) then
@@ -43,7 +41,7 @@ begin
         );
       $command$,
       rtrim(app_origin, '/') || '/api/dispatch',
-      'Bearer ' || dispatch_bearer_token
+      'Bearer ' || cron_secret
     )
   );
 end $$;

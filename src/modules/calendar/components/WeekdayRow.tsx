@@ -7,7 +7,7 @@ export function WeekdayRow() {
         <div
           key={weekday}
           className={[
-            'text-center text-[12px] font-semibold tracking-[0.2px]',
+            'text-center text-[12px] font-semibold',
             index === 6 ? 'text-[var(--color-red)]' : 'text-[var(--color-text-secondary)]',
           ].join(' ')}
         >

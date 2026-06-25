@@ -210,7 +210,7 @@ export function DayDetailSheet({
                     <Dialog.Title className="text-[15px] font-semibold text-[var(--color-red)]">
                       {info.solar.weekday}
                     </Dialog.Title>
-                    <div className="mt-px text-[30px] font-bold leading-tight tracking-[-0.6px] text-[var(--color-text)]">
+                    <div className="mt-px text-[30px] font-bold leading-tight text-[var(--color-text)]">
                       {formatSolarTitle(info)}
                     </div>
                     <Dialog.Description className="mt-[5px] text-[15px] font-semibold text-[var(--color-red)]">
@@ -298,7 +298,7 @@ export function DayDetailSheet({
 
                   {isEditorOpen ? (
                     <div className="mt-3 rounded-[14px] bg-[var(--color-card)] p-3.5">
-                      <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-[var(--color-text-secondary)]">
+                      <p className="text-[13px] font-semibold uppercase text-[var(--color-text-secondary)]">
                         {editingNote ? 'Sửa ghi chú' : 'Ghi chú mới'}
                       </p>
                       <input
@@ -399,7 +399,7 @@ export function DayDetailSheet({
 
 function SectionTitle({ children }: { children: string }) {
   return (
-    <div className="px-1 pb-2 pt-[22px] text-[13px] font-semibold uppercase tracking-[0.4px] text-[var(--color-text-secondary)]">
+    <div className="px-1 pb-2 pt-[22px] text-[13px] font-semibold uppercase text-[var(--color-text-secondary)]">
       {children}
     </div>
   )

@@ -2,28 +2,30 @@ import type { NoteOccurrence } from '@/storage'
 import type { CalendarDay } from '../calendarMath'
 import { AlmanacInfoCard } from './AlmanacInfoCard'
 import { AuspiciousHoursList } from './AuspiciousHoursList'
+import { ViewModeToggle } from './ViewModeToggle'
 import { WebPushPanel } from './WebPushPanel'
 
 interface DayDetailHomeProps {
   day: CalendarDay
   notes: NoteOccurrence[]
-  onOpenMonth: () => void
+  viewMode: 'day' | 'month'
+  onViewModeChange: (value: 'day' | 'month') => void
   onOpenSheet: () => void
 }
 
 const formatSolarTitle = (day: CalendarDay): string =>
   `${day.info.solar.day} tháng ${day.info.solar.month}, ${day.info.solar.year}`
 
-export function DayDetailHome({ day, notes, onOpenMonth, onOpenSheet }: DayDetailHomeProps) {
+export function DayDetailHome({ day, notes, viewMode, onViewModeChange, onOpenSheet }: DayDetailHomeProps) {
   const info = day.info
 
   return (
     <main className="min-h-svh bg-[var(--color-bg-grouped)] text-[var(--color-text)]">
       <div className="mx-auto flex min-h-svh w-full max-w-md flex-col px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-[calc(54px+env(safe-area-inset-top))]">
-        <header className="flex items-start justify-between gap-4">
+        <header>
           <div className="min-w-0">
             <p className="text-[15px] font-semibold text-[var(--color-red)]">{info.solar.weekday}</p>
-            <h1 className="mt-px text-[34px] font-bold leading-tight tracking-[-0.8px] text-[var(--color-text)]">
+            <h1 className="mt-px text-[34px] font-bold leading-tight text-[var(--color-text)]">
               {formatSolarTitle(day)}
             </h1>
             <p className="mt-1 text-[15px] font-semibold text-[var(--color-red)]">
@@ -31,14 +33,11 @@ export function DayDetailHome({ day, notes, onOpenMonth, onOpenSheet }: DayDetai
               {info.lunar.isLeapMonth ? ' nhuận' : ''} · Năm {info.canChi.year}
             </p>
           </div>
-          <button
-            type="button"
-            className="min-h-11 shrink-0 rounded-full bg-[var(--color-card)] px-4 text-[15px] font-semibold text-[var(--color-red)] shadow-sm"
-            onClick={onOpenMonth}
-          >
-            Lịch tháng
-          </button>
         </header>
+
+        <div className="mt-5">
+          <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
+        </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-[9px] bg-[var(--color-info-bg)] px-[11px] py-1.5 text-[12.5px] font-semibold text-[var(--color-info-text)]">
@@ -58,8 +57,6 @@ export function DayDetailHome({ day, notes, onOpenMonth, onOpenSheet }: DayDetai
             </span>
           ) : null}
         </div>
-
-        <WebPushPanel />
 
         <section className="mt-5 grid grid-cols-2 gap-2.5">
           <AlmanacInfoCard label="Can chi ngày" value={info.canChi.day} sub="Theo chu kỳ ngày" />
@@ -108,6 +105,9 @@ export function DayDetailHome({ day, notes, onOpenMonth, onOpenSheet }: DayDetai
             + Thêm ghi chú
           </button>
         </section>
+
+        <SectionTitle>Nhắc lịch</SectionTitle>
+        <WebPushPanel />
       </div>
     </main>
   )
@@ -115,7 +115,7 @@ export function DayDetailHome({ day, notes, onOpenMonth, onOpenSheet }: DayDetai
 
 function SectionTitle({ children }: { children: string }) {
   return (
-    <div className="px-1 pb-2 pt-[22px] text-[13px] font-semibold uppercase tracking-[0.4px] text-[var(--color-text-secondary)]">
+    <div className="px-1 pb-2 pt-[22px] text-[13px] font-semibold uppercase text-[var(--color-text-secondary)]">
       {children}
     </div>
   )

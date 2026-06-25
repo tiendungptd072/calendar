@@ -184,22 +184,16 @@ const clearStoredWebPushSubscription = (): void => {
 const pad = (value: number): string => String(value).padStart(2, '0')
 
 const getVapidPublicKey = (): string => {
-  const publicKey = import.meta.env.VAPID_PUBLIC_KEY || import.meta.env.VITE_VAPID_PUBLIC_KEY
+  const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || import.meta.env.VAPID_PUBLIC_KEY
 
   if (!publicKey) {
-    throw new Error('Thiếu VAPID_PUBLIC_KEY trên client.')
+    throw new Error('Thiếu VITE_VAPID_PUBLIC_KEY trên client.')
   }
 
   return publicKey
 }
 
-const getReadyServiceWorker = async (): Promise<ServiceWorkerRegistration> => {
-  if (!navigator.serviceWorker.controller) {
-    await navigator.serviceWorker.register('/sw.js')
-  }
-
-  return navigator.serviceWorker.ready
-}
+const getReadyServiceWorker = async (): Promise<ServiceWorkerRegistration> => navigator.serviceWorker.ready
 
 const getUsablePushSubscription = async (
   registration: ServiceWorkerRegistration,

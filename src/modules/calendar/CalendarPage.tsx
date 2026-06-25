@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useDrag } from '@use-gesture/react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BottomTabBar } from './components/BottomTabBar'
 import { CalendarHeader } from './components/CalendarHeader'
 import { DayDetailHome } from './components/DayDetailHome'
 import { DayDetailSheet } from './components/DayDetailSheet'
 import { MonthGrid } from './components/MonthGrid'
 import { TodaySummary } from './components/TodaySummary'
+import { ViewModeToggle } from './components/ViewModeToggle'
 import { useCalendarMonth } from './useCalendarMonth'
 import { useCalendarNotes } from './useCalendarNotes'
 
@@ -36,7 +36,8 @@ export function CalendarPage() {
         <DayDetailHome
           day={calendar.selectedDay}
           notes={notes.notesByDate[calendar.selectedDay.key] ?? []}
-          onOpenMonth={() => setViewMode('month')}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           onOpenSheet={() => setIsSheetOpen(true)}
         />
         <DayDetailSheet
@@ -64,14 +65,8 @@ export function CalendarPage() {
           onToday={calendar.goToday}
         />
 
-        <div className="px-5 pb-3">
-          <button
-            type="button"
-            className="min-h-11 w-full rounded-full bg-[var(--color-bg-grouped)] px-4 text-[15px] font-semibold text-[var(--color-red)]"
-            onClick={() => setViewMode('day')}
-          >
-            Chi tiết ngày
-          </button>
+        <div className="px-5 pb-4 pt-2">
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
         </div>
 
         <div {...bind()} className="touch-pan-y select-none overflow-hidden">
@@ -98,7 +93,6 @@ export function CalendarPage() {
         </div>
 
         <TodaySummary day={todayDay} notes={notes.notesByDate[todayDay.key] ?? []} />
-        <BottomTabBar />
       </div>
 
       <DayDetailSheet

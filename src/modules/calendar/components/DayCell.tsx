@@ -31,7 +31,7 @@ export function DayCell({ day, hasNote, isSelected, onSelect }: DayCellProps) {
     >
       <span
         className={[
-          'grid size-8 place-items-center rounded-full text-[19px] leading-none tracking-[-0.3px]',
+          'grid size-8 place-items-center rounded-full text-[19px] leading-none',
           day.isToday ? 'bg-[var(--color-red)] font-semibold text-white' : '',
           isSelected && !day.isToday ? 'bg-[rgba(255,59,48,0.1)] text-[var(--color-red)]' : '',
           !day.isToday && !isSelected && day.isCurrentMonth ? 'text-[var(--color-text)]' : '',

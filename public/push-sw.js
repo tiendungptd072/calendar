@@ -58,9 +58,13 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(
     (async () => {
       try {
-        const subscription = await self.registration.pushManager.subscribe(
-          event.oldSubscription ? event.oldSubscription.options : undefined,
-        )
+        const oldOptions = event.oldSubscription && event.oldSubscription.options
+
+        if (!oldOptions) {
+          return
+        }
+
+        const subscription = await self.registration.pushManager.subscribe(oldOptions)
 
         await fetch('/api/push/subscribe', {
           method: 'POST',

@@ -45,11 +45,11 @@ export function CalendarHeader({
 }: CalendarHeaderProps) {
   return (
     <header className="px-5 pb-1 pt-[calc(54px+env(safe-area-inset-top))]">
-      <div className="text-[13px] font-semibold tracking-[0.2px] text-[var(--color-red)]">
+      <div className="text-[13px] font-semibold text-[var(--color-red)]">
         Năm {canChiYear}
       </div>
       <div className="mt-0.5 flex items-center justify-between gap-3">
-        <h1 className="whitespace-nowrap text-[23px] font-bold leading-tight tracking-[-0.4px] text-[var(--color-text)]">
+        <h1 className="whitespace-nowrap text-[23px] font-bold leading-tight text-[var(--color-text)]">
           Tháng {month} · {year}
         </h1>
         <div className="flex items-center gap-[22px] text-[var(--color-red)]">
