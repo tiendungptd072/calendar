@@ -4,6 +4,7 @@ import { useDrag } from '@use-gesture/react'
 import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion'
 import type { DayInfo } from '@/core/lunar'
 import type { CalendarNote, NoteInput, NoteOccurrence } from '@/storage'
+import type { SaveNoteResult } from '../useCalendarNotes'
 import { AlmanacInfoCard } from './AlmanacInfoCard'
 import { AuspiciousHoursList } from './AuspiciousHoursList'
 
@@ -13,7 +14,7 @@ interface DayDetailSheetProps {
   notes: NoteOccurrence[]
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSaveNote: (input: NoteInput, id?: string) => Promise<void>
+  onSaveNote: (input: NoteInput, id?: string) => Promise<SaveNoteResult>
   onDeleteNote: (id: string) => Promise<void>
 }
 
@@ -63,6 +64,7 @@ export function DayDetailSheet({
   const [reminderDaysBefore, setReminderDaysBefore] = useState(defaultReminder.daysBefore)
   const [reminderTime, setReminderTime] = useState(defaultReminder.time)
   const [isSaving, setIsSaving] = useState(false)
+  const [editorMessage, setEditorMessage] = useState('')
 
   useEffect(() => {
     if (!open) {
@@ -86,6 +88,7 @@ export function DayDetailSheet({
     setReminderEnabled(false)
     setReminderDaysBefore(defaultReminder.daysBefore)
     setReminderTime(defaultReminder.time)
+    setEditorMessage('')
   }
 
   const closeSheet = () => {
@@ -102,6 +105,7 @@ export function DayDetailSheet({
     setReminderEnabled(calendarNote.reminder.enabled)
     setReminderDaysBefore(calendarNote.reminder.daysBefore)
     setReminderTime(calendarNote.reminder.time)
+    setEditorMessage('')
   }
 
   const submitNote = async () => {
@@ -110,8 +114,9 @@ export function DayDetailSheet({
     }
 
     setIsSaving(true)
+    setEditorMessage('')
     try {
-      await onSaveNote(
+      const result = await onSaveNote(
         {
           title: title.trim(),
           note: noteText.trim(),
@@ -131,6 +136,11 @@ export function DayDetailSheet({
         editingNote?.id,
       )
       resetForm()
+      if (result.pushWarning) {
+        setEditorMessage(result.pushWarning)
+      }
+    } catch (error) {
+      setEditorMessage(error instanceof Error ? error.message : 'Không lưu được ghi chú.')
     } finally {
       setIsSaving(false)
     }
@@ -279,6 +289,12 @@ export function DayDetailSheet({
                       Thêm ghi chú
                     </button>
                   </div>
+
+                  {editorMessage ? (
+                    <p className="mt-3 rounded-[12px] bg-[rgba(255,59,48,0.1)] px-3 py-2 text-[13px] leading-5 text-[var(--color-red)]">
+                      {editorMessage}
+                    </p>
+                  ) : null}
 
                   {isEditorOpen ? (
                     <div className="mt-3 rounded-[14px] bg-[var(--color-card)] p-3.5">

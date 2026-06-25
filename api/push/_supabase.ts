@@ -27,6 +27,8 @@ export interface PushSubscriptionUpsertInput {
   preferences: PushReminderPreferences
 }
 
+const PUSH_SUBSCRIPTION_SELECT = 'id,endpoint,subscription,timezone,lead_days,notify_hour,notify_mung1,notify_ram,is_active'
+
 const getSupabaseConfig = (): { url: string; key: string } => {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY
@@ -122,7 +124,7 @@ export const findPushSubscription = async ({
   }
 
   const query = new URLSearchParams({
-    select: 'id,endpoint,subscription,timezone,lead_days,notify_hour,notify_mung1,notify_ram,is_active',
+    select: PUSH_SUBSCRIPTION_SELECT,
     limit: '1',
   })
 
@@ -140,4 +142,27 @@ export const findPushSubscription = async ({
   })
 
   return rows[0] ?? null
+}
+
+export const listPushSubscriptionsByIds = async (
+  subscriptionIds: string[],
+): Promise<Map<string, PushSubscriptionRow>> => {
+  const uniqueIds = [...new Set(subscriptionIds)].filter(Boolean)
+
+  if (uniqueIds.length === 0) {
+    return new Map()
+  }
+
+  const query = new URLSearchParams({
+    select: PUSH_SUBSCRIPTION_SELECT,
+    id: `in.(${uniqueIds.join(',')})`,
+  })
+  const rows = await supabaseFetch<PushSubscriptionRow[]>(`push_subscriptions?${query.toString()}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  return new Map((rows ?? []).map((row) => [row.id, row]))
 }

@@ -14,12 +14,33 @@ import {
   updateNote,
 } from '@/storage'
 import type { CalendarNote, NoteInput, NoteOccurrenceMap } from '@/storage'
+import type { NoteWebPushSyncResult } from '@/notifications/webPushClient'
 import type { CalendarDay } from './calendarMath'
+
+export interface SaveNoteResult {
+  pushWarning?: string
+}
 
 interface CalendarNotesState {
   notesByDate: NoteOccurrenceMap
-  saveNote: (input: NoteInput, id?: string) => Promise<void>
+  saveNote: (input: NoteInput, id?: string) => Promise<SaveNoteResult>
   removeNote: (id: string) => Promise<void>
+}
+
+const getWebPushWarning = (result: NoteWebPushSyncResult): string | undefined => {
+  if (result.status === 'missing_subscription') {
+    return 'Ghi chú đã lưu, nhưng chưa có Web Push subscription. Hãy bấm Bật thông báo rồi cập nhật nhắc lịch.'
+  }
+
+  if (result.status === 'no_future_events') {
+    return 'Ghi chú đã lưu, nhưng giờ nhắc không còn ở tương lai nên chưa tạo lịch push.'
+  }
+
+  if (result.status === 'scheduled' && result.count === 0) {
+    return 'Ghi chú đã lưu, nhưng server chưa trả về lịch nhắc đã tạo.'
+  }
+
+  return undefined
 }
 
 export function useCalendarNotes(days: CalendarDay[]): CalendarNotesState {
@@ -54,19 +75,29 @@ export function useCalendarNotes(days: CalendarDay[]): CalendarNotesState {
     notesByDate: useMemo(() => buildNoteOccurrenceMap(days, notes), [days, notes]),
     saveNote: async (input, id) => {
       let savedNote: CalendarNote
+      let pushWarning: string | undefined
       if (id) {
         savedNote = await updateNote(id, input)
       } else {
         savedNote = await createNote(input)
       }
-      await syncNoteWebPush(savedNote).catch((error: unknown) => {
-        console.warn('syncNoteWebPush failed:', error)
-      })
+
+      try {
+        pushWarning = getWebPushWarning(await syncNoteWebPush(savedNote))
+      } catch (error) {
+        pushWarning =
+          error instanceof Error
+            ? `Ghi chú đã lưu, nhưng chưa tạo được lịch push: ${error.message}`
+            : 'Ghi chú đã lưu, nhưng chưa tạo được lịch push.'
+      }
+
       await reload()
       const settings = loadNotificationSettings()
       if (shouldUseNotifications(settings)) {
         await rescheduleNotifications(settings)
       }
+
+      return { pushWarning }
     },
     removeNote: async (id) => {
       await deleteNote(id)

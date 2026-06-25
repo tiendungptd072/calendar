@@ -1,12 +1,47 @@
 import { useMemo, useState } from 'react'
 import {
+  getWebPushScheduleStatus,
   getStoredWebPushSubscription,
   getWebPushAvailability,
   sendTestWebPush,
   syncAllNoteWebPush,
   subscribeWebPush,
 } from '@/notifications/webPushClient'
-import type { StoredWebPushSubscription } from '@/notifications/webPushClient'
+import type { StoredWebPushSubscription, WebPushScheduleStatus } from '@/notifications/webPushClient'
+
+const formatScheduleTime = (isoDate: string): string =>
+  new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  }).format(new Date(isoDate))
+
+const summarizeScheduleStatus = (scheduleStatus: WebPushScheduleStatus): string => {
+  const failedRecent = scheduleStatus.recent.find((row) => row.status === 'failed')
+  const nextPending = scheduleStatus.pending[0]
+
+  if (!scheduleStatus.subscription.isActive) {
+    return 'Subscription đang inactive. Hãy bấm cập nhật nhắc lịch để đăng ký lại.'
+  }
+
+  if (scheduleStatus.dispatch.acceptedSecretEnvNames.length === 0) {
+    return 'Server chưa có secret dispatch. Hãy thêm CRON_SECRET hoặc dùng SUPABASE_SERVICE_ROLE_KEY cho Supabase cron.'
+  }
+
+  if (scheduleStatus.due.length > 0) {
+    return `Có ${scheduleStatus.due.length} lịch đã đến hạn nhưng chưa gửi. Scheduler chưa gọi /api/dispatch hoặc đang lỗi.`
+  }
+
+  if (failedRecent) {
+    return `Lịch gần nhất bị lỗi: ${failedRecent.error_message ?? 'không rõ nguyên nhân'}.`
+  }
+
+  if (nextPending) {
+    return `Lịch nhắc kế tiếp trên server: ${formatScheduleTime(nextPending.fire_at)} (${nextPending.type}).`
+  }
+
+  return 'Chưa có lịch nhắc nào trên server. Hãy tạo ghi chú có bật nhắc hoặc bấm cập nhật nhắc lịch.'
+}
 
 export function WebPushPanel() {
   const availability = useMemo(() => getWebPushAvailability(), [])
@@ -55,6 +90,24 @@ export function WebPushPanel() {
     }
   }
 
+  const checkSchedule = async () => {
+    if (!subscription) {
+      setStatus('Hãy bật thông báo trước khi kiểm tra lịch nhắc.')
+      return
+    }
+
+    setIsBusy(true)
+
+    try {
+      const scheduleStatus = await getWebPushScheduleStatus(subscription)
+      setStatus(summarizeScheduleStatus(scheduleStatus))
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Không kiểm tra được lịch nhắc.')
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   return (
     <section className="mt-5 rounded-[16px] bg-[var(--color-card)] p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -77,7 +130,7 @@ export function WebPushPanel() {
         </p>
       )}
 
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <button
           type="button"
           className="min-h-11 rounded-full bg-[var(--color-red)] px-4 text-[15px] font-semibold text-white disabled:opacity-45"
@@ -93,6 +146,14 @@ export function WebPushPanel() {
           onClick={() => void sendTestNotification()}
         >
           Gửi thử ngay
+        </button>
+        <button
+          type="button"
+          className="min-h-11 rounded-full bg-[var(--color-bg-grouped)] px-4 text-[15px] font-semibold text-[var(--color-red)] disabled:opacity-45"
+          disabled={!subscription || isBusy}
+          onClick={() => void checkSchedule()}
+        >
+          Kiểm tra lịch nhắc
         </button>
       </div>
 

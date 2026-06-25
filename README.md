@@ -121,7 +121,7 @@ Notes lưu trong IndexedDB qua Dexie:
 
 Ghi chú lặp `yearly_lunar` được map vào month grid bằng lunar date, phù hợp cho giỗ/lễ âm lịch.
 
-## Local Notifications
+## Native Local Notifications
 
 Notification chỉ dùng local notification của Capacitor:
 
@@ -144,6 +144,8 @@ bunx cap open android
 
 Chạy trên thiết bị thật, bật nhắc trong app, cấp quyền notification, rồi đưa app xuống background để kiểm tra.
 
+Phần này dành cho bản native Capacitor. Bản PWA trên Vercel dùng Web Push ở mục dưới.
+
 ## PWA
 
 Build production tạo:
@@ -160,8 +162,26 @@ Web Push có hai phần khác nhau:
 
 - `Gửi thử ngay` gửi notification ngay từ `/api/push/test`.
 - Nhắc ghi chú/mùng 1/rằm theo giờ cần scheduler server gọi `/api/dispatch` liên tục.
+- `Kiểm tra lịch nhắc` gọi `/api/push/status` để xem subscription còn active không, có pending reminder không, và có reminder nào đã đến hạn nhưng chưa dispatch không.
 
-Vercel Hobby chỉ hỗ trợ Cron mỗi ngày một lần, nên không đủ để gửi ghi chú đúng phút khi PWA đã đóng. Để note reminder vẫn gửi khi app đã tắt, chạy file SQL này trong Supabase SQL Editor:
+Vercel Hobby chỉ hỗ trợ Cron mỗi ngày một lần, nên không đủ để gửi ghi chú đúng phút khi PWA đã đóng. Để note reminder vẫn gửi khi app đã tắt, dùng Supabase `pg_cron` + `pg_net` gọi `/api/dispatch` mỗi phút.
+
+API `/api/dispatch` chấp nhận một trong các bearer token sau:
+
+- `CRON_SECRET`
+- `DISPATCH_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SECRET_KEY`
+
+Trên Vercel, nên thêm `CRON_SECRET` hoặc `DISPATCH_SECRET` riêng. Nếu chưa muốn thêm env mới, có thể dùng `SUPABASE_SERVICE_ROLE_KEY` đang có làm bearer token cho Supabase cron.
+
+Nếu bảng Supabase được tạo thủ công, chạy schema idempotent trước:
+
+```text
+supabase/web_push_schema.sql
+```
+
+Sau đó chạy file cron trong Supabase SQL Editor:
 
 ```text
 supabase/web_push_dispatch_cron.sql
@@ -170,13 +190,40 @@ supabase/web_push_dispatch_cron.sql
 Trước khi chạy, thay:
 
 ```text
-YOUR_VERCEL_APP_URL
-YOUR_CRON_SECRET
+YOUR_VERCEL_APP_ORIGIN
+YOUR_DISPATCH_BEARER_TOKEN
 ```
 
-`YOUR_VERCEL_APP_URL` là domain production, ví dụ `calendar-nine-navy.vercel.app`. `YOUR_CRON_SECRET` phải trùng với env `CRON_SECRET` trên Vercel.
+`YOUR_VERCEL_APP_ORIGIN` là domain production có `https://`, ví dụ `https://calendar-nine-navy.vercel.app`. `YOUR_DISPATCH_BEARER_TOKEN` phải trùng một trong các env được chấp nhận ở trên.
 
 Supabase job này dùng `pg_cron` và `pg_net` để gọi `/api/dispatch` mỗi phút. `dispatch` sẽ quét bảng `scheduled_pushes`, gửi các push đến hạn, rồi đánh dấu `sent/status`.
+
+Kiểm tra scheduler trong Supabase:
+
+```sql
+select jobname, schedule, active
+from cron.job
+where jobname = 'lunar-calendar-dispatch-every-minute';
+```
+
+Kiểm tra các request gần nhất từ `pg_net`:
+
+```sql
+select status_code, content, created
+from net._http_response
+order by created desc
+limit 10;
+```
+
+Kiểm tra reminder ghi chú:
+
+```sql
+select id, type, fire_at, sent, status, error_message
+from scheduled_pushes
+where type = 'note'
+order by fire_at desc
+limit 10;
+```
 
 ## Kiểm Tra Trước Khi Commit
 

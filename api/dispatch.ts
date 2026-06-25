@@ -6,8 +6,9 @@ import {
   type ApiRequest,
   type ApiResponse,
 } from './push/_shared.js'
+import { hasDispatchSecret, isDispatchAuthorized, isVercelCronRequest } from './push/_dispatchAuth.js'
 import { generateScheduleForSub, supabaseFetch } from './push/_schedule.js'
-import { findPushSubscription, type PushSubscriptionRow } from './push/_supabase.js'
+import { listPushSubscriptionsByIds, type PushSubscriptionRow } from './push/_supabase.js'
 
 interface ScheduledPushDueRow {
   id: string
@@ -22,28 +23,31 @@ interface WebPushSendError {
   body?: unknown
 }
 
-const getAuthorization = (request: ApiRequest): string | undefined => {
-  const authorization = request.headers.authorization
-
-  return Array.isArray(authorization) ? authorization[0] : authorization
+const patchScheduledPush = async (id: string, body: Record<string, unknown>): Promise<void> => {
+  await supabaseFetch<null>(`scheduled_pushes?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
 }
 
-const isVercelCronRequest = (request: ApiRequest): boolean => {
-  const userAgent = request.headers['user-agent']
-  const cronSchedule = request.headers['x-vercel-cron-schedule']
-  const normalizedUserAgent = Array.isArray(userAgent) ? userAgent[0] : userAgent
-
-  return normalizedUserAgent === 'vercel-cron/1.0' && typeof cronSchedule === 'string'
+const markScheduledPushFailed = async (id: string, message: string): Promise<void> => {
+  await patchScheduledPush(id, {
+    status: 'failed',
+    error_message: message,
+  })
 }
 
 export default async function handler(request: ApiRequest, response: ApiResponse): Promise<void> {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) {
-    sendJson(response, 500, { ok: false, error: 'Missing CRON_SECRET' })
+  if (!hasDispatchSecret() && !isVercelCronRequest(request)) {
+    sendJson(response, 500, {
+      ok: false,
+      error: 'Missing dispatch secret. Set CRON_SECRET or use SUPABASE_SERVICE_ROLE_KEY as the scheduler bearer token.',
+    })
     return
   }
 
-  if (getAuthorization(request) !== `Bearer ${cronSecret}` && !isVercelCronRequest(request)) {
+  if (!isDispatchAuthorized(request)) {
     sendJson(response, 401, { ok: false, error: 'Unauthorized' })
     return
   }
@@ -79,11 +83,16 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     )
 
     let sent = 0
+    let skipped = 0
+    let failed = 0
+    const subscriptionById = await listPushSubscriptionsByIds((due ?? []).map((row) => row.subscription_id))
 
     for (const row of due ?? []) {
-      const subscription = await findPushSubscription({ subscriptionId: row.subscription_id })
+      const subscription = subscriptionById.get(row.subscription_id)
 
       if (!subscription || subscription.is_active === false) {
+        await markScheduledPushFailed(row.id, 'subscription missing or inactive')
+        skipped += 1
         continue
       }
 
@@ -96,15 +105,11 @@ export default async function handler(request: ApiRequest, response: ApiResponse
             url: row.url ?? '/',
           }),
         )
-        await supabaseFetch<null>(`scheduled_pushes?id=eq.${row.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sent: true,
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-            error_message: null,
-          }),
+        await patchScheduledPush(row.id, {
+          sent: true,
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          error_message: null,
         })
         sent += 1
       } catch (error) {
@@ -120,22 +125,19 @@ export default async function handler(request: ApiRequest, response: ApiResponse
           })
         }
 
-        await supabaseFetch<null>(`scheduled_pushes?id=eq.${row.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: 'failed',
-            error_message: `web-push ${pushError.statusCode ?? 'unknown'}: ${
-              typeof pushError.body === 'string' ? pushError.body : 'send failed'
-            }`,
-          }),
-        })
+        await markScheduledPushFailed(
+          row.id,
+          `web-push ${pushError.statusCode ?? 'unknown'}: ${
+            typeof pushError.body === 'string' ? pushError.body : 'send failed'
+          }`,
+        )
+        failed += 1
 
         console.error('push fail', pushError.statusCode, pushError.body)
       }
     }
 
-    sendJson(response, 200, { ok: true, refreshed, processed: due?.length ?? 0, sent })
+    sendJson(response, 200, { ok: true, refreshed, processed: due?.length ?? 0, sent, skipped, failed })
   } catch (error) {
     sendJson(response, 500, { ok: false, error: getErrorMessage(error) })
   }

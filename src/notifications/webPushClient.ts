@@ -33,11 +33,41 @@ interface NotePushEventRequest {
   fireAt: string
 }
 
+export type NoteWebPushSyncResult =
+  | { status: 'not_needed' }
+  | { status: 'missing_subscription' }
+  | { status: 'no_future_events' }
+  | { status: 'scheduled'; count: number }
+
 export interface WebPushReminderPreferences {
   leadDays: number
   notifyHour: number
   notifyMung1: boolean
   notifyRam: boolean
+}
+
+export interface WebPushScheduleStatusRow {
+  id: string
+  type: string
+  fire_at: string
+  sent: boolean
+  status: string
+  error_message: string | null
+}
+
+export interface WebPushScheduleStatus {
+  serverNow: string
+  subscription: {
+    id: string
+    endpoint: string
+    isActive: boolean
+  }
+  dispatch: {
+    acceptedSecretEnvNames: string[]
+  }
+  pending: WebPushScheduleStatusRow[]
+  due: WebPushScheduleStatusRow[]
+  recent: WebPushScheduleStatusRow[]
 }
 
 interface NavigatorWithStandalone extends Navigator {
@@ -378,13 +408,31 @@ const armNoteReminderTimers = (
   }
 }
 
-export const syncNoteWebPush = async (note: CalendarNote): Promise<void> => {
+const readScheduledCount = (value: unknown): number => {
+  if (!value || typeof value !== 'object' || !('scheduled' in value)) {
+    return 0
+  }
+
+  const scheduled = (value as { scheduled?: unknown }).scheduled
+
+  return typeof scheduled === 'number' && Number.isFinite(scheduled) ? scheduled : 0
+}
+
+export const syncNoteWebPush = async (note: CalendarNote): Promise<NoteWebPushSyncResult> => {
+  if (!note.reminder.enabled) {
+    return { status: 'not_needed' }
+  }
+
   const subscription = getStoredWebPushSubscription()
   if (!subscription) {
-    return
+    return { status: 'missing_subscription' }
   }
 
   const events = getNotePushEvents(note)
+  if (events.length === 0) {
+    return { status: 'no_future_events' }
+  }
+
   const response = await fetch('/api/push/schedule-note', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -397,12 +445,20 @@ export const syncNoteWebPush = async (note: CalendarNote): Promise<void> => {
       events,
     }),
   })
+  const result: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
-    throw new Error('API schedule-note chưa nhận lịch nhắc ghi chú.')
+    const message =
+      result && typeof result === 'object' && 'error' in result && typeof result.error === 'string'
+        ? result.error
+        : 'API schedule-note chưa nhận lịch nhắc ghi chú.'
+
+    throw new Error(message)
   }
 
   armNoteReminderTimers(subscription, note.id, events)
+
+  return { status: 'scheduled', count: readScheduledCount(result) }
 }
 
 export const removeNoteWebPush = async (noteId: string): Promise<void> => {
@@ -432,10 +488,9 @@ export const removeNoteWebPush = async (noteId: string): Promise<void> => {
 
 export const syncAllNoteWebPush = async (): Promise<number> => {
   const notes = await listNotes()
+  const results = await Promise.all(notes.map((note) => syncNoteWebPush(note)))
 
-  await Promise.all(notes.map((note) => syncNoteWebPush(note)))
-
-  return notes.length
+  return results.filter((result) => result.status === 'scheduled').length
 }
 
 export const sendTestWebPush = async (
@@ -467,4 +522,29 @@ export const sendTestWebPush = async (
   }
 
   return { sent: true, message: 'Đã gửi test notification.' }
+}
+
+export const getWebPushScheduleStatus = async (
+  subscription: StoredWebPushSubscription,
+): Promise<WebPushScheduleStatus> => {
+  const response = await fetch('/api/push/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+    }),
+  })
+
+  const result: unknown = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const message =
+      result && typeof result === 'object' && 'error' in result && typeof result.error === 'string'
+        ? result.error
+        : 'Không kiểm tra được lịch nhắc.'
+
+    throw new Error(message)
+  }
+
+  return result as WebPushScheduleStatus
 }
