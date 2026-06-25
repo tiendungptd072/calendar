@@ -7,7 +7,6 @@ import {
   webPush,
   type ApiRequest,
   type ApiResponse,
-  type WebPushSubscriptionPayload,
 } from './_shared.js'
 import { findPushSubscription, supabaseFetch } from './_supabase.js'
 
@@ -17,24 +16,11 @@ interface ScheduledPushDueRow {
   body: string | null
   url: string | null
   subscription_id: string
-  push_subscriptions?: {
-    subscription?: WebPushSubscriptionPayload
-    is_active?: boolean
-  } | Array<{
-    subscription?: WebPushSubscriptionPayload
-    is_active?: boolean
-  }>
 }
 
 interface WebPushSendError {
   statusCode?: number
   body?: unknown
-}
-
-const getEmbeddedSubscription = (row: ScheduledPushDueRow): WebPushSubscriptionPayload | null => {
-  const embedded = Array.isArray(row.push_subscriptions) ? row.push_subscriptions[0] : row.push_subscriptions
-
-  return embedded?.subscription ?? null
 }
 
 const getNoteUrlFilter = (body: unknown): string | null => {
@@ -71,14 +57,18 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       return
     }
 
+    if (subscription.is_active === false) {
+      sendJson(response, 400, { ok: false, error: 'Subscription is inactive. Enable Web Push again.' })
+      return
+    }
+
     const now = new Date().toISOString()
     const query = new URLSearchParams({
-      select: 'id,title,body,url,subscription_id,push_subscriptions!inner(subscription,is_active)',
+      select: 'id,title,body,url,subscription_id',
       subscription_id: `eq.${subscription.id}`,
       fire_at: `lte.${now}`,
       sent: 'eq.false',
       status: 'eq.pending',
-      'push_subscriptions.is_active': 'eq.true',
       order: 'fire_at.asc',
       limit: '25',
     })
@@ -96,15 +86,9 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     let sent = 0
 
     for (const row of due ?? []) {
-      const pushSubscription = getEmbeddedSubscription(row)
-
-      if (!pushSubscription) {
-        continue
-      }
-
       try {
         await webPush.sendNotification(
-          pushSubscription,
+          subscription.subscription,
           JSON.stringify({
             title: row.title ?? 'Lịch âm Việt Nam',
             body: row.body ?? '',

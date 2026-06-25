@@ -122,7 +122,7 @@ export const findPushSubscription = async ({
   }
 
   const query = new URLSearchParams({
-    select: 'id,endpoint,subscription',
+    select: 'id,endpoint,subscription,timezone,lead_days,notify_hour,notify_mung1,notify_ram,is_active',
     limit: '1',
   })
 

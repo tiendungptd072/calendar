@@ -5,10 +5,9 @@ import {
   webPush,
   type ApiRequest,
   type ApiResponse,
-  type WebPushSubscriptionPayload,
 } from './push/_shared.js'
 import { generateScheduleForSub, supabaseFetch } from './push/_schedule.js'
-import type { PushSubscriptionRow } from './push/_supabase.js'
+import { findPushSubscription, type PushSubscriptionRow } from './push/_supabase.js'
 
 interface ScheduledPushDueRow {
   id: string
@@ -16,13 +15,6 @@ interface ScheduledPushDueRow {
   body: string | null
   url: string | null
   subscription_id: string
-  push_subscriptions?: {
-    subscription?: WebPushSubscriptionPayload
-    is_active?: boolean
-  } | Array<{
-    subscription?: WebPushSubscriptionPayload
-    is_active?: boolean
-  }>
 }
 
 interface WebPushSendError {
@@ -42,12 +34,6 @@ const isVercelCronRequest = (request: ApiRequest): boolean => {
   const normalizedUserAgent = Array.isArray(userAgent) ? userAgent[0] : userAgent
 
   return normalizedUserAgent === 'vercel-cron/1.0' && typeof cronSchedule === 'string'
-}
-
-const getEmbeddedSubscription = (row: ScheduledPushDueRow): WebPushSubscriptionPayload | null => {
-  const embedded = Array.isArray(row.push_subscriptions) ? row.push_subscriptions[0] : row.push_subscriptions
-
-  return embedded?.subscription ?? null
 }
 
 export default async function handler(request: ApiRequest, response: ApiResponse): Promise<void> {
@@ -84,8 +70,8 @@ export default async function handler(request: ApiRequest, response: ApiResponse
 
     const now = encodeURIComponent(new Date().toISOString())
     const due = await supabaseFetch<ScheduledPushDueRow[]>(
-      `scheduled_pushes?select=id,title,body,url,subscription_id,push_subscriptions!inner(subscription,is_active)` +
-        `&fire_at=lte.${now}&sent=eq.false&status=eq.pending&push_subscriptions.is_active=eq.true&order=fire_at.asc&limit=100`,
+      `scheduled_pushes?select=id,title,body,url,subscription_id` +
+        `&fire_at=lte.${now}&sent=eq.false&status=eq.pending&order=fire_at.asc&limit=100`,
       {
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -95,15 +81,15 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     let sent = 0
 
     for (const row of due ?? []) {
-      const subscription = getEmbeddedSubscription(row)
+      const subscription = await findPushSubscription({ subscriptionId: row.subscription_id })
 
-      if (!subscription) {
+      if (!subscription || subscription.is_active === false) {
         continue
       }
 
       try {
         await webPush.sendNotification(
-          subscription,
+          subscription.subscription,
           JSON.stringify({
             title: row.title ?? 'Lịch âm Việt Nam',
             body: row.body ?? '',
