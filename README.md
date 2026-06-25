@@ -154,6 +154,30 @@ Build production tạo:
 
 Icon PWA hiện là placeholder. Thay icon thật trước khi release.
 
+## Web Push Reminders
+
+Web Push có hai phần khác nhau:
+
+- `Gửi thử ngay` gửi notification ngay từ `/api/push/test`.
+- Nhắc ghi chú/mùng 1/rằm theo giờ cần scheduler server gọi `/api/dispatch` liên tục.
+
+Vercel Hobby chỉ hỗ trợ Cron mỗi ngày một lần, nên không đủ để gửi ghi chú đúng phút khi PWA đã đóng. Để note reminder vẫn gửi khi app đã tắt, chạy file SQL này trong Supabase SQL Editor:
+
+```text
+supabase/web_push_dispatch_cron.sql
+```
+
+Trước khi chạy, thay:
+
+```text
+YOUR_VERCEL_APP_URL
+YOUR_CRON_SECRET
+```
+
+`YOUR_VERCEL_APP_URL` là domain production, ví dụ `calendar-nine-navy.vercel.app`. `YOUR_CRON_SECRET` phải trùng với env `CRON_SECRET` trên Vercel.
+
+Supabase job này dùng `pg_cron` và `pg_net` để gọi `/api/dispatch` mỗi phút. `dispatch` sẽ quét bảng `scheduled_pushes`, gửi các push đến hạn, rồi đánh dấu `sent/status`.
+
 ## Kiểm Tra Trước Khi Commit
 
 ```bash
