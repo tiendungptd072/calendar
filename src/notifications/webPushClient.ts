@@ -77,6 +77,17 @@ const urlBase64ToUint8Array = (base64String: string): Uint8Array<ArrayBuffer> =>
   return output
 }
 
+const arrayBufferToUrlBase64 = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+
+  return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
 export const getWebPushAvailability = (): WebPushAvailability => {
   const navigatorWithStandalone = window.navigator as NavigatorWithStandalone
   const isTouchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
@@ -134,6 +145,10 @@ const storeWebPushSubscription = (subscription: StoredWebPushSubscription): void
   window.localStorage.setItem(WEB_PUSH_SUBSCRIPTION_KEY, JSON.stringify(subscription))
 }
 
+const clearStoredWebPushSubscription = (): void => {
+  window.localStorage.removeItem(WEB_PUSH_SUBSCRIPTION_KEY)
+}
+
 const pad = (value: number): string => String(value).padStart(2, '0')
 
 const getVapidPublicKey = (): string => {
@@ -152,6 +167,28 @@ const getReadyServiceWorker = async (): Promise<ServiceWorkerRegistration> => {
   }
 
   return navigator.serviceWorker.ready
+}
+
+const getUsablePushSubscription = async (
+  registration: ServiceWorkerRegistration,
+  publicKey: string,
+): Promise<PushSubscription> => {
+  const existingSubscription = await registration.pushManager.getSubscription()
+  const existingKey = existingSubscription?.options.applicationServerKey
+
+  if (existingSubscription && existingKey && arrayBufferToUrlBase64(existingKey) === publicKey) {
+    return existingSubscription
+  }
+
+  if (existingSubscription) {
+    await existingSubscription.unsubscribe()
+    clearStoredWebPushSubscription()
+  }
+
+  return registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
+  })
 }
 
 const getTimezone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
@@ -202,13 +239,7 @@ export const subscribeWebPush = async (
   }
 
   const registration = await getReadyServiceWorker()
-  const existingSubscription = await registration.pushManager.getSubscription()
-  const subscription =
-    existingSubscription ??
-    (await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(getVapidPublicKey()),
-    }))
+  const subscription = await getUsablePushSubscription(registration, getVapidPublicKey())
 
   const subscriptionJson = subscription.toJSON()
 

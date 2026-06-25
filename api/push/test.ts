@@ -11,6 +11,25 @@ import {
 } from './_shared.js'
 import { findPushSubscription } from './_supabase.js'
 
+interface WebPushSendError extends Error {
+  statusCode?: number
+  body?: unknown
+}
+
+const isWebPushSendError = (error: unknown): error is WebPushSendError =>
+  error instanceof Error && ('statusCode' in error || 'body' in error)
+
+const getWebPushSendErrorMessage = (error: unknown): string => {
+  if (!isWebPushSendError(error)) {
+    return getErrorMessage(error)
+  }
+
+  const statusCode = error.statusCode ? `web-push ${error.statusCode}` : 'web-push failed'
+  const body = typeof error.body === 'string' && error.body.trim() ? `: ${error.body}` : ''
+
+  return `${statusCode}${body || `: ${error.message}`}`
+}
+
 export default async function handler(request: ApiRequest, response: ApiResponse): Promise<void> {
   if (request.method !== 'POST') {
     sendJson(response, 405, { ok: false, error: 'Method not allowed' })
@@ -44,6 +63,6 @@ export default async function handler(request: ApiRequest, response: ApiResponse
 
     sendJson(response, 200, { ok: true, sent: true, subscription_id: row.id, endpoint: row.endpoint })
   } catch (error) {
-    sendJson(response, 500, { ok: false, error: getErrorMessage(error) })
+    sendJson(response, 500, { ok: false, error: getWebPushSendErrorMessage(error) })
   }
 }
