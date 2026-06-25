@@ -93,7 +93,7 @@ export const generateScheduleForSub = async (
   const now = encodeURIComponent(new Date().toISOString())
 
   await supabaseFetch<null>(
-    `scheduled_pushes?subscription_id=eq.${subscription.id}&sent=eq.false&fire_at=gt.${now}`,
+    `scheduled_pushes?subscription_id=eq.${subscription.id}&type=in.(mung1,ram)&sent=eq.false&fire_at=gt.${now}`,
     { method: 'DELETE' },
   )
 

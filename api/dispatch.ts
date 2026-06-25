@@ -36,6 +36,14 @@ const getAuthorization = (request: ApiRequest): string | undefined => {
   return Array.isArray(authorization) ? authorization[0] : authorization
 }
 
+const isVercelCronRequest = (request: ApiRequest): boolean => {
+  const userAgent = request.headers['user-agent']
+  const cronSchedule = request.headers['x-vercel-cron-schedule']
+  const normalizedUserAgent = Array.isArray(userAgent) ? userAgent[0] : userAgent
+
+  return normalizedUserAgent === 'vercel-cron/1.0' && typeof cronSchedule === 'string'
+}
+
 const getEmbeddedSubscription = (row: ScheduledPushDueRow): WebPushSubscriptionPayload | null => {
   const embedded = Array.isArray(row.push_subscriptions) ? row.push_subscriptions[0] : row.push_subscriptions
 
@@ -49,7 +57,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     return
   }
 
-  if (getAuthorization(request) !== `Bearer ${cronSecret}`) {
+  if (getAuthorization(request) !== `Bearer ${cronSecret}` && !isVercelCronRequest(request)) {
     sendJson(response, 401, { ok: false, error: 'Unauthorized' })
     return
   }
