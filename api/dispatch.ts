@@ -6,8 +6,8 @@ import {
   type ApiRequest,
   type ApiResponse,
   type WebPushSubscriptionPayload,
-} from './push/_shared'
-import { supabaseFetch } from './push/_schedule'
+} from './push/_shared.js'
+import { supabaseFetch } from './push/_schedule.js'
 
 interface ScheduledPushDueRow {
   id: string

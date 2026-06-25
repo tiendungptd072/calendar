@@ -7,9 +7,9 @@ import {
   sendJson,
   type ApiRequest,
   type ApiResponse,
-} from './_shared'
-import { generateScheduleForSub } from './_schedule'
-import { upsertPushSubscription } from './_supabase'
+} from './_shared.js'
+import { generateScheduleForSub } from './_schedule.js'
+import { upsertPushSubscription } from './_supabase.js'
 
 export default async function handler(request: ApiRequest, response: ApiResponse): Promise<void> {
   if (request.method !== 'POST') {

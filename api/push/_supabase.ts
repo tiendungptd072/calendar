@@ -1,4 +1,4 @@
-import type { PushReminderPreferences, WebPushSubscriptionPayload } from './_shared'
+import type { PushReminderPreferences, WebPushSubscriptionPayload } from './_shared.js'
 
 export interface PushSubscriptionRow {
   id: string

@@ -1,5 +1,5 @@
-import { getDayInfo } from '../../src/core/lunar/index'
-import { supabaseFetch, type PushSubscriptionRow } from './_supabase'
+import { getVietnamLunarDay } from './_lunar.js'
+import { supabaseFetch, type PushSubscriptionRow } from './_supabase.js'
 
 type AlmanacPushKind = 'mung1' | 'ram'
 
@@ -29,13 +29,13 @@ export const getUpcomingAlmanacDates = (from: Date, days: number): AlmanacPushDa
     date.setHours(0, 0, 0, 0)
     date.setDate(date.getDate() + offset)
 
-    const info = getDayInfo(date)
+    const lunar = getVietnamLunarDay(date)
 
-    if (info.isMung1) {
+    if (lunar.day === 1) {
       dates.push({ date: new Date(date), kind: 'mung1' })
     }
 
-    if (info.isRam) {
+    if (lunar.day === 15) {
       dates.push({ date: new Date(date), kind: 'ram' })
     }
   }

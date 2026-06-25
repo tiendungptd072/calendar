@@ -8,8 +8,8 @@ import {
   webPush,
   type ApiRequest,
   type ApiResponse,
-} from './_shared'
-import { findPushSubscription } from './_supabase'
+} from './_shared.js'
+import { findPushSubscription } from './_supabase.js'
 
 export default async function handler(request: ApiRequest, response: ApiResponse): Promise<void> {
   if (request.method !== 'POST') {

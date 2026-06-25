@@ -3,9 +3,9 @@ import {
   sendJson,
   type ApiRequest,
   type ApiResponse,
-} from './push/_shared'
-import { generateScheduleForSub, supabaseFetch } from './push/_schedule'
-import type { PushSubscriptionRow } from './push/_supabase'
+} from './push/_shared.js'
+import { generateScheduleForSub, supabaseFetch } from './push/_schedule.js'
+import type { PushSubscriptionRow } from './push/_supabase.js'
 
 const getAuthorization = (request: ApiRequest): string | undefined => {
   const authorization = request.headers.authorization
