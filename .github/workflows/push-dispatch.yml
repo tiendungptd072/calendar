@@ -1,0 +1,31 @@
+name: Push Dispatch
+
+on:
+  schedule:
+    - cron: '0 * * * *'      # Hourly: dispatch all due notifications
+    - cron: '0 20 * * 0'     # Sunday 8pm UTC (Mon 3am VN): replenish 90-day schedule
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    name: Dispatch due notifications
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger /api/dispatch
+        run: |
+          curl -sf --retry 2 \
+            -X POST "${{ secrets.APP_URL }}/api/dispatch" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+  replenish:
+    name: Replenish notification schedule
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 20 * * 0'
+    steps:
+      - name: Trigger /api/replenish
+        run: |
+          curl -sf --retry 2 \
+            -X POST "${{ secrets.APP_URL }}/api/replenish" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

@@ -3,6 +3,10 @@
     {
       "path": "/api/dispatch",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/replenish",
+      "schedule": "0 20 * * 0"
     }
   ]
 }

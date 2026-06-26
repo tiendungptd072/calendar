@@ -265,14 +265,14 @@ export function DayDetailSheet({
                           </div>
                           <button
                             type="button"
-                            className="text-[13px] font-semibold text-[var(--color-red)]"
+                            className="min-h-11 px-1 text-[14px] font-semibold text-[var(--color-red)]"
                             onClick={() => startEdit(occurrence.note)}
                           >
                             Sửa
                           </button>
                           <button
                             type="button"
-                            className="text-[13px] font-semibold text-[var(--color-text-secondary)]"
+                            className="min-h-11 pl-3 pr-1 text-[14px] font-medium text-[rgba(255,59,48,0.55)]"
                             onClick={() => void onDeleteNote(occurrence.note.id)}
                           >
                             Xóa

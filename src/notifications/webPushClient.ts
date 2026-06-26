@@ -5,8 +5,6 @@ import type { CalendarNote } from '@/storage'
 const WEB_PUSH_SUBSCRIPTION_KEY = 'lunar-calendar-web-push-subscription'
 const VIETNAM_TIMEZONE = 7
 const VIETNAM_TIMEZONE_OFFSET = '+07:00'
-const MAX_BROWSER_TIMER_DELAY = 2_147_483_647
-const noteReminderTimers = new Map<string, number[]>()
 
 export interface StoredWebPushSubscription {
   endpoint: string
@@ -345,63 +343,6 @@ const getNotePushEvents = (note: CalendarNote): NotePushEventRequest[] => {
     .map(({ eventDate, fireAt }) => ({ eventDate, fireAt: fireAt.toISOString() }))
 }
 
-const clearNoteReminderTimers = (noteId: string): void => {
-  const timers = noteReminderTimers.get(noteId)
-
-  if (!timers) {
-    return
-  }
-
-  for (const timer of timers) {
-    window.clearTimeout(timer)
-  }
-
-  noteReminderTimers.delete(noteId)
-}
-
-const dispatchDueNoteWebPush = async (subscription: StoredWebPushSubscription, noteId: string): Promise<void> => {
-  const response = await fetch('/api/push/dispatch-due', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      endpoint: subscription.endpoint,
-      noteId,
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error('API dispatch-due chưa gửi được nhắc ghi chú.')
-  }
-}
-
-const armNoteReminderTimers = (
-  subscription: StoredWebPushSubscription,
-  noteId: string,
-  events: NotePushEventRequest[],
-): void => {
-  clearNoteReminderTimers(noteId)
-
-  const timers = events.flatMap((event) => {
-    const delay = new Date(event.fireAt).getTime() - Date.now()
-
-    if (delay < 0 || delay > MAX_BROWSER_TIMER_DELAY) {
-      return []
-    }
-
-    const timer = window.setTimeout(() => {
-      void dispatchDueNoteWebPush(subscription, noteId).catch((error: unknown) => {
-        console.warn('dispatchDueNoteWebPush failed:', error)
-      })
-    }, delay)
-
-    return [timer]
-  })
-
-  if (timers.length > 0) {
-    noteReminderTimers.set(noteId, timers)
-  }
-}
-
 const readScheduledCount = (value: unknown): number => {
   if (!value || typeof value !== 'object' || !('scheduled' in value)) {
     return 0
@@ -450,8 +391,6 @@ export const syncNoteWebPush = async (note: CalendarNote): Promise<NoteWebPushSy
     throw new Error(message)
   }
 
-  armNoteReminderTimers(subscription, note.id, events)
-
   return { status: 'scheduled', count: readScheduledCount(result) }
 }
 
@@ -461,7 +400,6 @@ export const removeNoteWebPush = async (noteId: string): Promise<void> => {
     return
   }
 
-  clearNoteReminderTimers(noteId)
   const response = await fetch('/api/push/schedule-note', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -516,6 +454,23 @@ export const sendTestWebPush = async (
   }
 
   return { sent: true, message: 'Đã gửi test notification.' }
+}
+
+// Dispatch all overdue pushes for this device. Called on app open and every foreground
+// transition to compensate for iOS freezing JS timers while the PWA is backgrounded.
+// Omitting noteId tells the server to dispatch every pending row for this subscription,
+// not just a specific note. Fire-and-forget — the hourly cron is the primary delivery path.
+export const catchUpDuePushes = async (): Promise<void> => {
+  const subscription = getStoredWebPushSubscription()
+  if (!subscription) {
+    return
+  }
+
+  await fetch('/api/push/dispatch-due', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: subscription.endpoint }),
+  }).catch(() => undefined)
 }
 
 export const getWebPushScheduleStatus = async (

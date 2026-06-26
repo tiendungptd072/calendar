@@ -73,10 +73,7 @@ export function WebPushPanel() {
   }
 
   const sendTestNotification = async () => {
-    if (!subscription) {
-      setStatus('Hãy bật thông báo trước khi gửi test.')
-      return
-    }
+    if (!subscription) return
 
     setIsBusy(true)
 
@@ -91,10 +88,7 @@ export function WebPushPanel() {
   }
 
   const checkSchedule = async () => {
-    if (!subscription) {
-      setStatus('Hãy bật thông báo trước khi kiểm tra lịch nhắc.')
-      return
-    }
+    if (!subscription) return
 
     setIsBusy(true)
 
@@ -110,16 +104,17 @@ export function WebPushPanel() {
 
   return (
     <section className="overflow-hidden rounded-[14px] bg-[var(--color-card)]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 px-4 pt-3.5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-4 pb-3 pt-3.5">
+        <div className="min-w-0">
           <h2 className="text-[17px] font-semibold text-[var(--color-text)]">Thông báo</h2>
-          <p className="mt-1 text-[14px] leading-5 text-[var(--color-text-secondary)]">
-            Nhắc mùng 1, rằm và các ghi chú đã bật nhắc.
+          <p className="mt-0.5 text-[13px] leading-[18px] text-[var(--color-text-secondary)]">
+            Nhắc mùng 1, rằm và ghi chú có bật nhắc.
           </p>
         </div>
         <span
           className={[
-            'mr-4 mt-3.5 shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold',
+            'mt-0.5 shrink-0 rounded-full px-2.5 py-[3px] text-[12px] font-semibold',
             subscription
               ? 'bg-[var(--color-green-bg)] text-[var(--color-green-text)]'
               : 'bg-[var(--color-bg-grouped)] text-[var(--color-text-secondary)]',
@@ -129,43 +124,67 @@ export function WebPushPanel() {
         </span>
       </div>
 
+      {/* Unavailability reason */}
       {availability.reason ? (
-        <p className="mx-4 mt-3 rounded-[12px] bg-[rgba(255,59,48,0.1)] px-3 py-2 text-[13px] leading-5 text-[var(--color-red)]">
+        <p className="mx-4 mb-3 rounded-[12px] bg-[rgba(255,59,48,0.1)] px-3 py-2 text-[13px] leading-5 text-[var(--color-red)]">
           {availability.reason}
         </p>
       ) : null}
 
-      <div className="mt-3 grid grid-cols-1 gap-px bg-[var(--color-separator)] sm:grid-cols-3">
-        <button
-          type="button"
-          className="min-h-12 bg-[var(--color-card)] px-4 text-[15px] font-semibold text-[var(--color-red)] disabled:opacity-45"
-          disabled={!availability.supported || isBusy}
-          onClick={() => void enableNotifications()}
-        >
-          {subscription ? 'Cập nhật nhắc' : 'Bật thông báo'}
-        </button>
-        <button
-          type="button"
-          className="min-h-12 bg-[var(--color-card)] px-4 text-[15px] font-semibold text-[var(--color-red)] disabled:opacity-45"
-          disabled={!subscription || isBusy}
-          onClick={() => void sendTestNotification()}
-        >
-          Gửi thử ngay
-        </button>
-        <button
-          type="button"
-          className="min-h-12 bg-[var(--color-card)] px-4 text-[15px] font-semibold text-[var(--color-red)] disabled:opacity-45"
-          disabled={!subscription || isBusy}
-          onClick={() => void checkSchedule()}
-        >
-          Kiểm tra lịch nhắc
-        </button>
+      {/* Primary actions */}
+      <div className="border-t border-[var(--color-separator)]">
+        {!subscription ? (
+          /* Not subscribed: single prominent CTA */
+          <button
+            type="button"
+            className="w-full px-4 py-3.5 text-left text-[16px] font-semibold text-[var(--color-red)] disabled:opacity-45"
+            disabled={!availability.supported || isBusy}
+            onClick={() => void enableNotifications()}
+          >
+            {isBusy ? 'Đang bật…' : 'Bật thông báo'}
+          </button>
+        ) : (
+          /* Subscribed: two equal actions */
+          <div className="grid grid-cols-2 gap-px bg-[var(--color-separator)]">
+            <button
+              type="button"
+              className="bg-[var(--color-card)] px-4 py-3.5 text-[15px] font-semibold text-[var(--color-red)] disabled:opacity-45"
+              disabled={isBusy}
+              onClick={() => void enableNotifications()}
+            >
+              {isBusy ? 'Đang cập nhật…' : 'Cập nhật nhắc'}
+            </button>
+            <button
+              type="button"
+              className="bg-[var(--color-card)] px-4 py-3.5 text-[15px] font-semibold text-[var(--color-red)] disabled:opacity-45"
+              disabled={isBusy}
+              onClick={() => void sendTestNotification()}
+            >
+              Gửi thử ngay
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Status message */}
       {status ? (
         <p className="border-t border-[var(--color-separator)] px-4 py-3 text-[13px] leading-5 text-[var(--color-text-secondary)]">
           {status}
         </p>
+      ) : null}
+
+      {/* Debug: check schedule — subtle, secondary */}
+      {subscription ? (
+        <div className="border-t border-[var(--color-separator)] px-4 py-2">
+          <button
+            type="button"
+            className="text-[12px] text-[var(--color-text-secondary)] disabled:opacity-45"
+            disabled={isBusy}
+            onClick={() => void checkSchedule()}
+          >
+            Kiểm tra lịch nhắc trên server
+          </button>
+        </div>
       ) : null}
     </section>
   )

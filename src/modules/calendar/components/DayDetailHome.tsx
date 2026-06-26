@@ -80,9 +80,11 @@ export function DayDetailHome({ day, notes, viewMode, onViewModeChange, onOpenSh
             </div>
           ) : (
             notes.map((occurrence) => (
-              <div
+              <button
                 key={`${occurrence.note.id}-${occurrence.dateKey}`}
-                className="flex items-center gap-[13px] border-b border-[var(--color-separator)] px-4 py-[13px]"
+                type="button"
+                className="flex w-full items-center gap-[13px] border-b border-[var(--color-separator)] px-4 py-[13px] text-left"
+                onClick={onOpenSheet}
               >
                 <span className="h-[30px] w-1 flex-none rounded-full bg-[var(--color-red)]" />
                 <div className="min-w-0 flex-1">
@@ -94,15 +96,21 @@ export function DayDetailHome({ day, notes, viewMode, onViewModeChange, onOpenSh
                     {occurrence.note.repeatType === 'yearly_lunar' ? ' · Lặp âm lịch' : ''}
                   </div>
                 </div>
-              </div>
+                <svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden="true" className="shrink-0 text-[var(--color-text-tertiary)]">
+                  <path d="M1 1l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             ))
           )}
           <button
             type="button"
-            className="min-h-12 w-full px-4 text-left text-[17px] font-medium text-[var(--color-red)]"
+            className="flex min-h-12 w-full items-center gap-2.5 px-4 text-left text-[16px] font-medium text-[var(--color-red)]"
             onClick={onOpenSheet}
           >
-            + Thêm ghi chú
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            Thêm ghi chú
           </button>
         </section>
 

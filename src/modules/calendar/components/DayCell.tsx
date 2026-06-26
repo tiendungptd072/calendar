@@ -43,10 +43,15 @@ export function DayCell({ day, hasNote, isSelected, onSelect }: DayCellProps) {
       <span
         className={[
           'mt-px text-center text-[10.5px] leading-[13px]',
-          isSpecialLunarDay ? 'font-bold text-[var(--color-red)]' : 'font-normal',
-          !isSpecialLunarDay && day.isCurrentMonth ? 'text-[var(--color-text-secondary)]' : '',
-          !day.isCurrentMonth ? 'text-[var(--color-text-tertiary)]' : '',
-          day.isToday ? 'text-white/90' : '',
+          isSpecialLunarDay ? 'font-bold' : 'font-normal',
+          // today's red background overrides all text colors — resolve explicitly to avoid Tailwind class conflicts
+          day.isToday
+            ? 'text-white/80'
+            : isSpecialLunarDay
+              ? 'text-[var(--color-red)]'
+              : day.isCurrentMonth
+                ? 'text-[var(--color-text-secondary)]'
+                : 'text-[var(--color-text-tertiary)]',
         ].join(' ')}
       >
         {getLunarLabel(day)}
