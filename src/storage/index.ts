@@ -5,6 +5,7 @@ export {
   listNotes,
   listNotesBySolarDates,
   listYearlyLunarNotes,
+  listYearlySolarNotes,
   updateNote,
 } from './noteRepository'
 export { buildNoteOccurrenceMap, getNotesForDay } from './noteOccurrences'

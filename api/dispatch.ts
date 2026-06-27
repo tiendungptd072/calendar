@@ -91,6 +91,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
             body: row.body ?? '',
             url: row.url ?? '/',
           }),
+          { urgency: 'high', TTL: 3600 },
         )
         await patchScheduledPush(row.id, {
           sent: true,

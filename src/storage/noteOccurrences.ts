@@ -21,15 +21,20 @@ export function buildNoteOccurrenceMap(days: CalendarDay[], notes: CalendarNote[
         return true
       }
 
-      if (note.repeatType !== 'yearly_lunar' || !note.lunarDate) {
-        return false
+      if (note.repeatType === 'yearly_lunar' && note.lunarDate) {
+        return (
+          note.lunarDate.day === day.info.lunar.day &&
+          note.lunarDate.month === day.info.lunar.month &&
+          note.lunarDate.isLeapMonth === day.info.lunar.isLeapMonth
+        )
       }
 
-      return (
-        note.lunarDate.day === day.info.lunar.day &&
-        note.lunarDate.month === day.info.lunar.month &&
-        note.lunarDate.isLeapMonth === day.info.lunar.isLeapMonth
-      )
+      if (note.repeatType === 'yearly_solar') {
+        const [, noteMonth, noteDay] = note.solarDate.split('-').map(Number)
+        return noteMonth === day.info.solar.month && noteDay === day.info.solar.day
+      }
+
+      return false
     })
 
     if (occurrences.length > 0) {

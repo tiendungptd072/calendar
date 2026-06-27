@@ -1,4 +1,4 @@
-export type NoteRepeatType = 'none' | 'yearly_lunar'
+export type NoteRepeatType = 'none' | 'yearly_lunar' | 'yearly_solar'
 
 export interface StoredLunarDate {
   day: number

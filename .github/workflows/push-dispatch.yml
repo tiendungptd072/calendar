@@ -2,7 +2,7 @@ name: Push Dispatch
 
 on:
   schedule:
-    - cron: '0 * * * *'      # Hourly: dispatch all due notifications
+    - cron: '*/5 * * * *'    # Every 5 min: dispatch due notifications on time
     - cron: '0 20 * * 0'     # Sunday 8pm UTC (Mon 3am VN): replenish 90-day schedule
   workflow_dispatch:
 

@@ -11,6 +11,7 @@ import {
   deleteNote,
   listNotesBySolarDates,
   listYearlyLunarNotes,
+  listYearlySolarNotes,
   updateNote,
 } from '@/storage'
 import type { CalendarNote, NoteInput, NoteOccurrenceMap } from '@/storage'
@@ -47,16 +48,40 @@ export function useCalendarNotes(days: CalendarDay[]): CalendarNotesState {
   const [notes, setNotes] = useState<CalendarNote[]>([])
   const solarDates = useMemo(() => days.map((day) => day.key), [days])
 
-  // Load direct solar notes for the visible grid plus all yearly-lunar notes.
+  const deleteExpiredOneTimeNotes = useCallback(async (): Promise<void> => {
+    const { listNotes: listAllNotes } = await import('@/storage')
+    const allNotes = await listAllNotes()
+    const now = Date.now()
+
+    for (const note of allNotes) {
+      if (note.repeatType !== 'none' || !note.reminder.enabled) {
+        continue
+      }
+
+      const [noteYear, noteMonth, noteDay] = note.solarDate.split('-').map(Number)
+      const fireDate = new Date(note.solarDate)
+      fireDate.setFullYear(noteYear, noteMonth - 1, noteDay - note.reminder.daysBefore)
+      const [hours, minutes] = note.reminder.time.split(':').map(Number)
+      fireDate.setHours(hours, minutes, 0, 0)
+
+      if (fireDate.getTime() < now) {
+        await deleteNote(note.id)
+        await removeNoteWebPush(note.id).catch(() => undefined)
+      }
+    }
+  }, [])
+
+  // Load direct solar notes for the visible grid plus all yearly-lunar and yearly-solar notes.
   // Repeat matching is resolved in-memory against each rendered CalendarDay.
   const reload = useCallback(async () => {
-    const [datedNotes, repeatingNotes] = await Promise.all([
+    const [datedNotes, lunarNotes, solarNotes] = await Promise.all([
       listNotesBySolarDates(solarDates),
       listYearlyLunarNotes(),
+      listYearlySolarNotes(),
     ])
     const byId = new Map<string, CalendarNote>()
 
-    for (const note of [...datedNotes, ...repeatingNotes]) {
+    for (const note of [...datedNotes, ...lunarNotes, ...solarNotes]) {
       byId.set(note.id, note)
     }
 
@@ -65,11 +90,12 @@ export function useCalendarNotes(days: CalendarDay[]): CalendarNotesState {
 
   useEffect(() => {
     const loadNotes = async () => {
+      await deleteExpiredOneTimeNotes()
       await reload()
     }
 
     void loadNotes()
-  }, [reload])
+  }, [reload, deleteExpiredOneTimeNotes])
 
   return {
     notesByDate: useMemo(() => buildNoteOccurrenceMap(days, notes), [days, notes]),

@@ -303,6 +303,18 @@ const getNoteEventDates = (note: CalendarNote): string[] => {
     return [note.solarDate]
   }
 
+  if (note.repeatType === 'yearly_solar') {
+    const [, noteMonth, noteDay] = note.solarDate.split('-').map(Number)
+    const currentYear = getVietnamYear()
+    const eventDates: string[] = []
+
+    for (let year = currentYear - 1; year <= currentYear + 3; year += 1) {
+      eventDates.push(`${year}-${pad(noteMonth)}-${pad(noteDay)}`)
+    }
+
+    return eventDates
+  }
+
   if (!note.lunarDate) {
     return []
   }

@@ -94,6 +94,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
             body: row.body ?? '',
             url: row.url ?? '/',
           }),
+          { urgency: 'high', TTL: 3600 },
         )
         await supabaseFetch<null>(`scheduled_pushes?id=eq.${row.id}`, {
           method: 'PATCH',

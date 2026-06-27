@@ -59,14 +59,16 @@ export function DayDetailHome({ day, notes, viewMode, onViewModeChange, onOpenSh
         </div>
 
         <section className="mt-5 grid grid-cols-2 gap-2.5">
-          <AlmanacInfoCard label="Can chi ngày" value={info.canChi.day} sub="Theo chu kỳ ngày" />
-          <AlmanacInfoCard label="Can chi tháng" value={info.canChi.month} sub="Theo tháng âm" />
           <AlmanacInfoCard
-            label="Sao · Ngũ hành"
-            value={`Sao ${info.sao.name}`}
-            sub={`${info.sao.nguHanh} · tham chiếu`}
+            label="Can chi ngày"
+            value={info.canChi.day}
+            sub={`Tháng ${info.canChi.month}`}
           />
-          <AlmanacInfoCard label="Trực" value={info.truc} sub="Quy ước lịch vạn niên" />
+          <AlmanacInfoCard
+            label="Sao ngày"
+            value={`Sao ${info.sao.name}`}
+            sub={`Ngũ hành ${info.sao.nguHanh}`}
+          />
         </section>
 
         <SectionTitle>Giờ hoàng đạo</SectionTitle>
@@ -93,7 +95,7 @@ export function DayDetailHome({ day, notes, viewMode, onViewModeChange, onOpenSh
                   </div>
                   <div className="mt-px text-[13px] text-[var(--color-text-secondary)]">
                     {occurrence.note.reminder.enabled ? occurrence.note.reminder.time : 'Cả ngày'}
-                    {occurrence.note.repeatType === 'yearly_lunar' ? ' · Lặp âm lịch' : ''}
+                    {occurrence.note.repeatType === 'yearly_lunar' ? ' · Lặp âm lịch' : occurrence.note.repeatType === 'yearly_solar' ? ' · Lặp dương lịch' : ''}
                   </div>
                 </div>
                 <svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden="true" className="shrink-0 text-[var(--color-text-tertiary)]">

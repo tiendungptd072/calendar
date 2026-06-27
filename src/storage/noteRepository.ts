@@ -62,3 +62,7 @@ export async function listNotesBySolarDates(solarDates: string[]): Promise<Calen
 export async function listYearlyLunarNotes(): Promise<CalendarNote[]> {
   return db.notes.where('repeatType').equals('yearly_lunar').toArray()
 }
+
+export async function listYearlySolarNotes(): Promise<CalendarNote[]> {
+  return db.notes.where('repeatType').equals('yearly_solar').toArray()
+}

@@ -228,14 +228,16 @@ export function DayDetailSheet({
                   </div>
 
                   <div className="mt-[18px] grid grid-cols-2 gap-2.5">
-                    <AlmanacInfoCard label="Can chi ngày" value={info.canChi.day} sub="Theo chu kỳ ngày" />
-                    <AlmanacInfoCard label="Can chi tháng" value={info.canChi.month} sub="Theo tháng âm" />
                     <AlmanacInfoCard
-                      label="Sao · Ngũ hành"
-                      value={`Sao ${info.sao.name}`}
-                      sub={`${info.sao.nguHanh} · tham chiếu`}
+                      label="Can chi ngày"
+                      value={info.canChi.day}
+                      sub={`Tháng ${info.canChi.month}`}
                     />
-                    <AlmanacInfoCard label="Trực" value={info.truc} sub="Quy ước lịch vạn niên" />
+                    <AlmanacInfoCard
+                      label="Sao ngày"
+                      value={`Sao ${info.sao.name}`}
+                      sub={`Ngũ hành ${info.sao.nguHanh}`}
+                    />
                   </div>
 
                   <SectionTitle>Giờ hoàng đạo</SectionTitle>
@@ -260,7 +262,7 @@ export function DayDetailSheet({
                             </div>
                             <div className="mt-px text-[13px] text-[var(--color-text-secondary)]">
                               {occurrence.note.reminder.enabled ? occurrence.note.reminder.time : 'Cả ngày'}
-                              {occurrence.note.repeatType === 'yearly_lunar' ? ' · Lặp âm lịch' : ''}
+                              {occurrence.note.repeatType === 'yearly_lunar' ? ' · Lặp âm lịch' : occurrence.note.repeatType === 'yearly_solar' ? ' · Lặp dương lịch' : ''}
                             </div>
                           </div>
                           <button
@@ -314,14 +316,32 @@ export function DayDetailSheet({
                         onChange={(event) => setNoteText(event.target.value)}
                       />
                       <div className="mt-3 space-y-2 text-[14px] text-[var(--color-text)]">
-                        <label className="flex min-h-8 items-center justify-between gap-3">
-                          Lặp hằng năm theo âm lịch
-                          <input
-                            type="checkbox"
-                            checked={repeatType === 'yearly_lunar'}
-                            onChange={(event) => setRepeatType(event.target.checked ? 'yearly_lunar' : 'none')}
-                          />
-                        </label>
+                        <div>
+                          <p className="mb-1.5 text-[12px] font-semibold uppercase text-[var(--color-text-secondary)]">Lặp hằng năm</p>
+                          <div className="flex gap-1.5">
+                            {(
+                              [
+                                { value: 'none', label: 'Không' },
+                                { value: 'yearly_solar', label: 'Dương lịch' },
+                                { value: 'yearly_lunar', label: 'Âm lịch' },
+                              ] as const
+                            ).map(({ value, label }) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => setRepeatType(value)}
+                                className={[
+                                  'flex-1 rounded-[10px] py-2 text-[13px] font-semibold transition-colors',
+                                  repeatType === value
+                                    ? 'bg-[var(--color-red)] text-white'
+                                    : 'bg-[var(--color-bg-grouped)] text-[var(--color-text-secondary)]',
+                                ].join(' ')}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         <label className="flex min-h-8 items-center justify-between gap-3">
                           Nhắc ghi chú
                           <input
